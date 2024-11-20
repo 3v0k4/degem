@@ -43,12 +43,45 @@ class TestDegem < Minitest::Test
     file.write(content)
     file.rewind
 
-    yield
+    yield file.path
   rescue StandardError => e
     puts e
     raise
   ensure
     file.close
+    FileUtils.rm(file.path)
+  end
+
+  GemSpecification = Data.define(:full_gem_path)
+
+  def with_gem(name:, source_code:, &block)
+    with_file(path: "lib/#{name}.rb", content: source_code) do |path|
+      with_stubbed_find_by_name(gem_name: name, full_gem_path: File.dirname(path)) do
+        block.call(File.dirname(path))
+      end
+    end
+  end
+
+  def with_stubbed_find_by_name(gem_name:, full_gem_path: "")
+    find_by_name = Gem::Specification.method(:find_by_name)
+
+    Gem::Specification.singleton_class.class_eval do
+      remove_method(:find_by_name)
+      define_method(:find_by_name) do |name|
+        return GemSpecification.new(full_gem_path: "/dev/null") if gem_name != name
+
+        GemSpecification.new(full_gem_path: full_gem_path)
+      end
+    end
+
+    yield
+  ensure
+    Gem::Specification.singleton_class.class_eval do
+      if method_defined?(:find_by_name)
+        remove_method(:find_by_name)
+        define_method(:find_by_name, find_by_name)
+      end
+    end
   end
 
   def test_it_returns_the_parsed_gemfile
@@ -77,7 +110,7 @@ class TestDegem < Minitest::Test
 
     with_gemfile(gems: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
-        actual = Degem::FindUnused.new.call(path)
+        actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
       end
     end
@@ -90,7 +123,7 @@ class TestDegem < Minitest::Test
 
     with_gemfile(gems: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
-        actual = Degem::FindUnused.new.call(path)
+        actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
       end
     end
@@ -103,7 +136,7 @@ class TestDegem < Minitest::Test
 
     with_gemfile(gems: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
-        actual = Degem::FindUnused.new.call(path)
+        actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
       end
     end
@@ -116,8 +149,35 @@ class TestDegem < Minitest::Test
 
     with_gemfile(gems: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
-        actual = Degem::FindUnused.new.call(path)
+        actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
+      end
+    end
+  end
+
+  def test_with_a_rails_bundle_it_excludes_rails
+    with_gemfile(gems: %w[rails]) do |path|
+      with_stubbed_find_by_name(gem_name: "rails") do
+        actual = Degem::FindUnused.new(path).call
+        assert_equal [], actual.map(&:name)
+      end
+    end
+  end
+
+  def test_with_a_rails_bundle_it_excludes_gem_with_railtie
+    %w[::Rails::Railtie Rails::Railtie ::Rails::Engine Rails::Engine].each do |super_|
+      content = <<~CONTENT
+        module Foo
+          class Railtie < #{super_}
+          end
+        end
+      CONTENT
+
+      with_gemfile(gems: %w[rails foo]) do |path|
+        with_gem(name: "foo", source_code: content) do
+          actual = Degem::FindUnused.new(path).call
+          assert_equal [], actual.map(&:name)
+        end
       end
     end
   end
