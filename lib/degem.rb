@@ -35,7 +35,9 @@ module Degem
     def call(gemfile_path)
       finders = [
         method(:based_on_top_module),
-        method(:based_on_top_const)
+        method(:based_on_top_const),
+        method(:based_on_require),
+        method(:based_on_required_path)
       ]
       based_on(finders, gemfile_path)
     end
@@ -46,9 +48,9 @@ module Degem
       ParseGemfile.new.call(gemfile_path).gems
     end
 
-    def found?(string, dir)
+    def found?(pattern, dir)
       Open3
-        .capture3("rg -g '*.rb' -g -l '\\b#{string}\\b' #{dir}")
+        .capture3("rg -g '*.rb' -g -l \"#{pattern}\" #{dir}")
         .last
         .exitstatus
         .zero?
@@ -63,15 +65,27 @@ module Degem
     def based_on_top_module(gemfile_path, gem_)
       return false unless gem_.name.include?("-")
 
-      top_level = gem_.name.split("-").map(&:capitalize).join("::")
-      found?(top_level, File.dirname(gemfile_path))
+      pattern = "^\\b#{gem_.name.split("-").map(&:capitalize).join("::")}\\b"
+      found?(pattern, File.dirname(gemfile_path))
     end
 
     def based_on_top_const(gemfile_path, gem_)
       return false unless gem_.name.include?("-")
 
-      top_level = gem_.name.split("-").map(&:capitalize).join("")
-      found?(top_level, File.dirname(gemfile_path))
+      pattern = "^\\b#{gem_.name.split("-").map(&:capitalize).join("")}\\b"
+      found?(pattern, File.dirname(gemfile_path))
+    end
+
+    def based_on_require(gemfile_path, gem_)
+      pattern = "^\\s*require\\s+['\\\"]#{gem_.name}['\\\"]"
+      found?(pattern, File.dirname(gemfile_path))
+    end
+
+    def based_on_required_path(gemfile_path, gem_)
+      return false unless gem_.name.include?("-")
+
+      pattern = "^\\s*require\\s+['\\\"]foo/bar['\\\"]"
+      found?(pattern, File.dirname(gemfile_path))
     end
   end
 end
