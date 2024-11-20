@@ -3,6 +3,11 @@
 require_relative "degem/version"
 
 module Degem
-  class Error < StandardError; end
-  # Your code goes here...
+  class ParseGems
+    def call(gemfile_path)
+      Bundler::Dsl
+        .evaluate(gemfile_path, nil, {})
+        .dependencies
+    end
+  end
 end

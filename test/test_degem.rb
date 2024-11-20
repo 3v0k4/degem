@@ -3,11 +3,26 @@
 require "test_helper"
 
 class TestDegem < Minitest::Test
-  def test_that_it_has_a_version_number
-    refute_nil ::Degem::VERSION
+  def with_gemfile(gems:)
+    content = <<~CONTENT
+      # frozen_string_literal: true
+      source "https://rubygems.org"
+      #{gems.map { "gem '#{_1}'" }.join("\n")}
+    CONTENT
+
+    file = Tempfile.create("Gemfile")
+    file.write(content)
+    file.rewind
+
+    yield file.path
+  ensure
+    file.close
   end
 
-  def test_it_does_something_useful
-    assert false
+  def test_it_returns_the_parsed_gems
+    with_gemfile(gems: ["foo"]) do |path|
+      actual = Degem::ParseGems.new.call(path)
+      assert_equal ["foo"], actual.map(&:name)
+    end
   end
 end
