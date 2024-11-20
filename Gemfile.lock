@@ -7,6 +7,13 @@ GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.2)
+    debug (1.9.2)
+      irb (~> 1.10)
+      reline (>= 0.3.8)
+    io-console (0.7.2)
+    irb (1.14.1)
+      rdoc (>= 4.0.0)
+      reline (>= 0.4.2)
     json (2.8.2)
     language_server-protocol (3.17.0.3)
     minitest (5.25.1)
@@ -14,10 +21,16 @@ GEM
     parser (3.3.6.0)
       ast (~> 2.4.1)
       racc
+    psych (5.2.0)
+      stringio
     racc (1.8.1)
     rainbow (3.1.1)
     rake (13.2.1)
+    rdoc (6.7.0)
+      psych (>= 4.0.0)
     regexp_parser (2.9.2)
+    reline (0.5.11)
+      io-console (~> 0.5)
     rubocop (1.68.0)
       json (~> 2.3)
       language_server-protocol (>= 3.17.0)
@@ -41,6 +54,7 @@ GEM
     rubocop-thread_safety (0.6.0)
       rubocop (>= 1.48.1)
     ruby-progressbar (1.13.0)
+    stringio (3.1.2)
     unicode-display_width (2.6.0)
 
 PLATFORMS
@@ -48,6 +62,7 @@ PLATFORMS
   x86_64-darwin-21
 
 DEPENDENCIES
+  debug (>= 1.0.0)
   degem!
   minitest (~> 5.16)
   rake (~> 13.0)
