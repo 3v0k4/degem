@@ -82,4 +82,17 @@ class TestDegem < Minitest::Test
       end
     end
   end
+
+  def test_it_detects_unused_gems_based_on_the_top_level_const
+    content = <<~CONTENT
+      FooBar.new.call
+    CONTENT
+
+    with_gemfile(gems: %w[foo foo-bar bar]) do |path|
+      with_file(path: "app/services/baz.rb", content: content) do
+        actual = Degem::FindUnused.new.call(path)
+        assert_equal %w[foo bar], actual.map(&:name)
+      end
+    end
+  end
 end
