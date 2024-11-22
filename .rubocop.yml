@@ -1,5 +1,6 @@
-AllCops:
-  TargetRubyVersion: 3.0
+require:
+  - rubocop-minitest
+  - rubocop-rake
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes

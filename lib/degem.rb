@@ -161,7 +161,7 @@ module Degem
     end
 
     def parse(origin_url)
-      origin_url.match(/github\.com[:\/](.+?)(\.git)?$/)[1]
+      origin_url.match(%r{github\.com[:/](.+?)(\.git)?$})[1]
     end
 
     def to_commit_url(origin_url, commit_hash)

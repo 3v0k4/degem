@@ -13,7 +13,7 @@ class TestDegem < Minitest::Test
     FileUtils.rm_rf(TMP_DIR)
   end
 
-  def with_gemfile(gems:)
+  def with_gemfile(gems:, &block)
     content = <<~CONTENT
       # frozen_string_literal: true
       source "https://rubygems.org"
@@ -21,7 +21,7 @@ class TestDegem < Minitest::Test
     CONTENT
 
     with_file(path: "Gemfile", content: content) do |path|
-      yield path
+      block.call(path)
     end
   end
 
@@ -135,7 +135,7 @@ class TestDegem < Minitest::Test
     with_gemfile(gems: %w[rails]) do |path|
       with_gem(name: "rails") do
         actual = Degem::FindUnused.new(path).call
-        assert_equal [], actual.map(&:name)
+        assert_empty actual.map(&:name)
       end
     end
   end
@@ -153,7 +153,7 @@ class TestDegem < Minitest::Test
         with_gem(name: "rails", source_code: "") do
           with_gem(name: "foo", source_code: content) do
             actual = Degem::FindUnused.new(path).call
-            assert_equal [], actual.map(&:name)
+            assert_empty actual.map(&:name)
           end
         end
       end
@@ -198,7 +198,7 @@ class TestDegem < Minitest::Test
       commit_messages: ["default commit"],
       commit_uris: ["http://example.com/default"],
       origin_url: "git@github.com:3v0k4/default.git"
-    }
+    }.freeze
 
     def initialize(attributes_by_gem_name = {})
       @attributes_by_gem_name = attributes_by_gem_name
@@ -221,7 +221,7 @@ class TestDegem < Minitest::Test
       pr_numbers: [123],
       pr_titles: ["default title"],
       pr_urls: ["https://github.com/3v0k4/default/pull/123"]
-    }
+    }.freeze
 
     def initialize(attributes_by_gem_name = {})
       @attributes_by_gem_name = attributes_by_gem_name
