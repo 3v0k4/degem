@@ -116,4 +116,60 @@ module Degem
       ["rails"].include?(gem_.name)
     end
   end
+
+  class MultiDelegator
+    def initialize(*delegates)
+      @delegates = delegates
+    end
+
+    def method_missing(method, *args, &block)
+      delegate = @delegates.find { _1.respond_to?(method) }
+      return delegate.public_send(method, *args, &block) if delegate
+
+      super
+    end
+
+    def respond_to_missing?(method, include_private = false)
+      @delegates.any? { _1.respond_to?(method, include_private) } || super
+    end
+  end
+
+  class Decorated < MultiDelegator
+    def source_code_uri
+      metadata["source_code_uri"] || homepage
+    end
+  end
+
+  class Decorate
+    def call(gems:, git_adapter:, host_adapter:)
+      gems.map do |gem_|
+        gemspec = Gem::Specification.find_by_name(gem_.name)
+        git = git_adapter.call(gem_.name)
+        host = host_adapter.call(gem_.name)
+        Decorated.new(gem_, gemspec, git, host)
+      end
+    end
+  end
+
+  class GitAdapter
+    private
+
+    def commit_uris(origin_url, commit_hashes)
+      commit_hashes.map do |commit_hash|
+        to_commit_url(origin_url, commit_hash)
+      end
+    end
+
+    def parse(origin_url)
+      origin_url.match(/github\.com[:\/](.+?)(\.git)?$/)[1]
+    end
+
+    def to_commit_url(origin_url, commit_hash)
+      repository = parse(origin_url)
+      "https://github.com/#{repository}/commit/#{commit_hash}"
+    end
+  end
+
+  class GithubAdapter
+  end
 end

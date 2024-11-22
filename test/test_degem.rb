@@ -20,16 +20,9 @@ class TestDegem < Minitest::Test
       #{gems.map { "gem '#{_1}'" }.join("\n")}
     CONTENT
 
-    file = Tempfile.create("Gemfile", TMP_DIR)
-    file.write(content)
-    file.rewind
-
-    yield file.path
-  rescue StandardError => e
-    puts e
-    raise
-  ensure
-    file.close
+    with_file(path: "Gemfile", content: content) do |path|
+      yield path
+    end
   end
 
   def with_file(path:, content:)
@@ -52,34 +45,17 @@ class TestDegem < Minitest::Test
     FileUtils.rm(file.path)
   end
 
-  GemSpecification = Data.define(:full_gem_path)
-
-  def with_gem(name:, source_code:, &block)
-    with_file(path: "lib/#{name}.rb", content: source_code) do |path|
-      with_stubbed_find_by_name(gem_name: name, full_gem_path: File.dirname(path)) do
-        block.call(File.dirname(path))
+  def with_gem(name:, source_code: "", &block)
+    gemspec = <<~CONTENT
+      Gem::Specification.new do |spec|
+        spec.name = "#{name}"
+        spec.version = "1"
       end
-    end
-  end
+    CONTENT
 
-  def with_stubbed_find_by_name(gem_name:, full_gem_path: "")
-    find_by_name = Gem::Specification.method(:find_by_name)
-
-    Gem::Specification.singleton_class.class_eval do
-      remove_method(:find_by_name)
-      define_method(:find_by_name) do |name|
-        return GemSpecification.new(full_gem_path: "/dev/null") if gem_name != name
-
-        GemSpecification.new(full_gem_path: full_gem_path)
-      end
-    end
-
-    yield
-  ensure
-    Gem::Specification.singleton_class.class_eval do
-      if method_defined?(:find_by_name)
-        remove_method(:find_by_name)
-        define_method(:find_by_name, find_by_name)
+    with_gemspec(gem_name: name, content: gemspec) do
+      with_file(path: "gems/#{name}-1/lib/#{name}.rb", content: source_code) do
+        block.call
       end
     end
   end
@@ -157,7 +133,7 @@ class TestDegem < Minitest::Test
 
   def test_with_a_rails_bundle_it_excludes_rails
     with_gemfile(gems: %w[rails]) do |path|
-      with_stubbed_find_by_name(gem_name: "rails") do
+      with_gem(name: "rails") do
         actual = Degem::FindUnused.new(path).call
         assert_equal [], actual.map(&:name)
       end
@@ -174,11 +150,160 @@ class TestDegem < Minitest::Test
       CONTENT
 
       with_gemfile(gems: %w[rails foo]) do |path|
-        with_gem(name: "foo", source_code: content) do
-          actual = Degem::FindUnused.new(path).call
-          assert_equal [], actual.map(&:name)
+        with_gem(name: "rails", source_code: "") do
+          with_gem(name: "foo", source_code: content) do
+            actual = Degem::FindUnused.new(path).call
+            assert_equal [], actual.map(&:name)
+          end
         end
       end
+    end
+  end
+
+  def with_gemspec(gem_name:, content:)
+    @map ||= {}
+
+    with_file(path: "#{gem_name}/#{gem_name}.gemspec", content: content) do |path|
+      @map[gem_name] = Gem::Specification.load(path)
+
+      find_by_name = Gem::Specification.method(:find_by_name)
+      map = @map; Gem::Specification.singleton_class.class_eval do
+        remove_method(:find_by_name)
+        define_method(:find_by_name) do |name|
+          raise "[Test] Forgot to stub #{name}?" unless map.key?(name)
+
+          map[name]
+        end
+      end
+
+      yield path
+    ensure
+      @map = {}
+
+      Gem::Specification.singleton_class.class_eval do
+        if method_defined?(:find_by_name)
+          remove_method(:find_by_name)
+          define_method(:find_by_name, find_by_name)
+        end
+      end
+    end
+  end
+
+  class GitTestAdapter < Degem::GitAdapter
+    require "ostruct"
+
+    DEFAULTS = {
+      commit_hashes: ["f49bd04a116cf25e10a674fde8a52eca7ce18772"],
+      committer_dates: ["1970-01-01"],
+      commit_messages: ["default commit"],
+      commit_uris: ["http://example.com/default"],
+      origin_url: "git@github.com:3v0k4/default.git"
+    }
+
+    def initialize(attributes_by_gem_name = {})
+      @attributes_by_gem_name = attributes_by_gem_name
+    end
+
+    def call(gem_name)
+      gem_attributes = @attributes_by_gem_name[gem_name.to_sym] || DEFAULTS
+
+      OpenStruct.new(gem_attributes).tap do |attributes|
+        attributes.commit_uris =
+          commit_uris(attributes.origin_url, attributes.commit_hashes)
+      end
+    end
+  end
+
+  class GithubTestAdapter < Degem::GithubAdapter
+    require "ostruct"
+
+    DEFAULTS = {
+      pr_numbers: [123],
+      pr_titles: ["default title"],
+      pr_urls: ["https://github.com/3v0k4/default/pull/123"]
+    }
+
+    def initialize(attributes_by_gem_name = {})
+      @attributes_by_gem_name = attributes_by_gem_name
+    end
+
+    def call(gem_name)
+      gem_attributes = @attributes_by_gem_name[gem_name.to_sym] || DEFAULTS
+
+      OpenStruct.new(gem_attributes)
+    end
+  end
+
+  def test_it_decorates_the_gem
+    gemspec = <<~CONTENT
+      Gem::Specification.new do |spec|
+        spec.name = "foo"
+        spec.homepage = "http://example.com/homepage"
+        spec.metadata["source_code_uri"] = "http://example.com/source"
+      end
+    CONTENT
+
+    with_gemspec(gem_name: "foo", content: gemspec) do
+      gems = [Bundler::Dependency.new("foo", nil, "require" => true)]
+
+      git_hash = {
+        foo: {
+          commit_hashes: ["afb779653f324eb1c6b486c871402a504a8fda42"],
+          committer_dates: ["2020-01-12"],
+          commit_messages: ["initial commit"],
+          origin_url: "git@github.com:3v0k4/foo.git"
+        }
+      }
+      git_adapter = GitTestAdapter.new(git_hash)
+
+      github_hash = {
+        foo: {
+          pr_numbers: [1],
+          pr_titles: ["first pr"],
+          pr_urls: ["https://github.com/3v0k4/foo/pull/1"]
+        }
+      }
+      host_adapter = GithubTestAdapter.new(github_hash)
+
+      actual = Degem::Decorate.new.call(gems:, git_adapter:, host_adapter:)
+
+      assert_equal ["foo"], actual.map(&:name)
+      assert_equal [[true]], actual.map(&:autorequire)
+      assert_equal ["http://example.com/homepage"], actual.map(&:homepage)
+      assert_equal ["http://example.com/source"], actual.map(&:source_code_uri)
+
+      commit_hashes = git_hash.dig(:foo, :commit_hashes)
+      assert_equal [commit_hashes], actual.map(&:commit_hashes)
+      assert_equal [git_hash.dig(:foo, :committer_dates)], actual.map(&:committer_dates)
+      assert_equal [git_hash.dig(:foo, :commit_messages)], actual.map(&:commit_messages)
+      assert_equal(
+        [["https://github.com/3v0k4/foo/commit/#{commit_hashes.first}"]],
+        actual.map(&:commit_uris)
+      )
+
+      assert_equal [github_hash.dig(:foo, :pr_numbers)], actual.map(&:pr_numbers)
+      assert_equal [github_hash.dig(:foo, :pr_titles)], actual.map(&:pr_titles)
+      assert_equal [github_hash.dig(:foo, :pr_urls)], actual.map(&:pr_urls)
+    end
+  end
+
+  def test_with_minimal_gemspec_it_decorates_the_gem
+    gemspec = <<~CONTENT
+      Gem::Specification.new do |spec|
+        spec.name = "degem"
+      end
+    CONTENT
+
+    with_gemspec(gem_name: "foo", content: gemspec) do
+      gems = [Bundler::Dependency.new("foo", nil)]
+      git_adapter = GitTestAdapter.new
+      host_adapter = GithubTestAdapter.new
+      actual = Degem::Decorate.new.call(gems:, git_adapter:, host_adapter:)
+
+      assert_equal ["foo"], actual.map(&:name)
+      assert_equal [nil], actual.map(&:autorequire)
+      assert_equal [nil], actual.map(&:homepage)
+      assert_equal [nil], actual.map(&:source_code_uri)
     end
   end
 end
