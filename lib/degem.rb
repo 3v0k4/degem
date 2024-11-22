@@ -8,12 +8,12 @@ module Degem
       @definition = definition
     end
 
-    def gems
-      @gems ||= @definition.dependencies
+    def rubygems
+      @rubygems ||= @definition.dependencies
     end
 
     def rails?
-      gems.map(&:name).include?("rails")
+      rubygems.map(&:name).include?("rails")
     end
   end
 
@@ -37,8 +37,8 @@ module Degem
     end
 
     def call
-      gems.filter_map do |gem_|
-        gem_ unless finders.any? { _1.call(gem_) }
+      rubygems.filter_map do |rubygem|
+        rubygem unless finders.any? { _1.call(rubygem) }
       end
     end
 
@@ -65,8 +65,8 @@ module Degem
       @rails ||= gemfile.rails?
     end
 
-    def gems
-      @gems ||= gemfile.gems
+    def rubygems
+      @rubygems ||= gemfile.rubygems
     end
 
     def found?(pattern, dir)
@@ -77,34 +77,34 @@ module Degem
         .zero?
     end
 
-    def based_on_top_module(gem_)
-      return false unless gem_.name.include?("-")
+    def based_on_top_module(rubygem)
+      return false unless rubygem.name.include?("-")
 
-      pattern = "^\\b#{gem_.name.split("-").map(&:capitalize).join("::")}\\b"
+      pattern = "^\\b#{rubygem.name.split("-").map(&:capitalize).join("::")}\\b"
       found?(pattern, File.dirname(gemfile_path))
     end
 
-    def based_on_top_const(gem_)
-      return false unless gem_.name.include?("-")
+    def based_on_top_const(rubygem)
+      return false unless rubygem.name.include?("-")
 
-      pattern = "^\\b#{gem_.name.split("-").map(&:capitalize).join("")}\\b"
+      pattern = "^\\b#{rubygem.name.split("-").map(&:capitalize).join("")}\\b"
       found?(pattern, File.dirname(gemfile_path))
     end
 
-    def based_on_require(gem_)
-      pattern = "^\\s*require\\s+['\\\"]#{gem_.name}['\\\"]"
+    def based_on_require(rubygem)
+      pattern = "^\\s*require\\s+['\\\"]#{rubygem.name}['\\\"]"
       found?(pattern, File.dirname(gemfile_path))
     end
 
-    def based_on_required_path(gem_)
-      return false unless gem_.name.include?("-")
+    def based_on_required_path(rubygem)
+      return false unless rubygem.name.include?("-")
 
       pattern = "^\\s*require\\s+['\\\"]foo/bar['\\\"]"
       found?(pattern, File.dirname(gemfile_path))
     end
 
-    def based_on_railtie(gem_)
-      gem_path = Gem::Specification.find_by_name(gem_.name).full_gem_path
+    def based_on_railtie(rubygem)
+      gem_path = Gem::Specification.find_by_name(rubygem.name).full_gem_path
 
       [
         found?("Rails::Railtie", gem_path),
@@ -112,8 +112,8 @@ module Degem
       ].any?
     end
 
-    def based_on_rails(gem_)
-      ["rails"].include?(gem_.name)
+    def based_on_rails(rubygem)
+      ["rails"].include?(rubygem.name)
     end
   end
 
@@ -141,12 +141,12 @@ module Degem
   end
 
   class Decorate
-    def call(gems:, git_adapter:, host_adapter:)
-      gems.map do |gem_|
-        gemspec = Gem::Specification.find_by_name(gem_.name)
-        git = git_adapter.call(gem_.name)
-        host = host_adapter.call(gem_.name)
-        Decorated.new(gem_, gemspec, git, host)
+    def call(rubygems:, git_adapter:, host_adapter:)
+      rubygems.map do |rubygem|
+        gemspec = Gem::Specification.find_by_name(rubygem.name)
+        git = git_adapter.call(rubygem.name)
+        host = host_adapter.call(rubygem.name)
+        Decorated.new(rubygem, gemspec, git, host)
       end
     end
   end

@@ -13,11 +13,11 @@ class TestDegem < Minitest::Test
     FileUtils.rm_rf(TMP_DIR)
   end
 
-  def with_gemfile(gems:, &block)
+  def with_gemfile(rubygems:, &block)
     content = <<~CONTENT
       # frozen_string_literal: true
       source "https://rubygems.org"
-      #{gems.map { "gem '#{_1}'" }.join("\n")}
+      #{rubygems.map { "gem '#{_1}'" }.join("\n")}
     CONTENT
 
     with_file(path: "Gemfile", content: content) do |path|
@@ -61,19 +61,19 @@ class TestDegem < Minitest::Test
   end
 
   def test_it_returns_the_parsed_gemfile
-    with_gemfile(gems: ["foo"]) do |path|
+    with_gemfile(rubygems: ["foo"]) do |path|
       actual = Degem::ParseGemfile.new.call(path)
-      assert_equal ["foo"], actual.gems.map(&:name)
+      assert_equal ["foo"], actual.rubygems.map(&:name)
     end
   end
 
   def test_it_detects_rails
-    with_gemfile(gems: ["foo"]) do |path|
+    with_gemfile(rubygems: ["foo"]) do |path|
       actual = Degem::ParseGemfile.new.call(path)
       refute actual.rails?
     end
 
-    with_gemfile(gems: ["rails"]) do |path|
+    with_gemfile(rubygems: ["rails"]) do |path|
       actual = Degem::ParseGemfile.new.call(path)
       assert actual.rails?
     end
@@ -84,7 +84,7 @@ class TestDegem < Minitest::Test
       Foo::Bar.new.call
     CONTENT
 
-    with_gemfile(gems: %w[foo foo-bar bar]) do |path|
+    with_gemfile(rubygems: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
         actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
@@ -97,7 +97,7 @@ class TestDegem < Minitest::Test
       FooBar.new.call
     CONTENT
 
-    with_gemfile(gems: %w[foo foo-bar bar]) do |path|
+    with_gemfile(rubygems: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
         actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
@@ -110,7 +110,7 @@ class TestDegem < Minitest::Test
       require 'foo-bar'
     CONTENT
 
-    with_gemfile(gems: %w[foo foo-bar bar]) do |path|
+    with_gemfile(rubygems: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
         actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
@@ -123,7 +123,7 @@ class TestDegem < Minitest::Test
       require 'foo/bar'
     CONTENT
 
-    with_gemfile(gems: %w[foo foo-bar bar]) do |path|
+    with_gemfile(rubygems: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
         actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
@@ -132,7 +132,7 @@ class TestDegem < Minitest::Test
   end
 
   def test_with_a_rails_bundle_it_excludes_rails
-    with_gemfile(gems: %w[rails]) do |path|
+    with_gemfile(rubygems: %w[rails]) do |path|
       with_gem(name: "rails") do
         actual = Degem::FindUnused.new(path).call
         assert_empty actual.map(&:name)
@@ -149,7 +149,7 @@ class TestDegem < Minitest::Test
         end
       CONTENT
 
-      with_gemfile(gems: %w[rails foo]) do |path|
+      with_gemfile(rubygems: %w[rails foo]) do |path|
         with_gem(name: "rails", source_code: "") do
           with_gem(name: "foo", source_code: content) do
             actual = Degem::FindUnused.new(path).call
@@ -244,7 +244,7 @@ class TestDegem < Minitest::Test
     CONTENT
 
     with_gemspec(gem_name: "foo", content: gemspec) do
-      gems = [Bundler::Dependency.new("foo", nil, "require" => true)]
+      rubygems = [Bundler::Dependency.new("foo", nil, "require" => true)]
 
       git_hash = {
         foo: {
@@ -265,7 +265,7 @@ class TestDegem < Minitest::Test
       }
       host_adapter = GithubTestAdapter.new(github_hash)
 
-      actual = Degem::Decorate.new.call(gems:, git_adapter:, host_adapter:)
+      actual = Degem::Decorate.new.call(rubygems:, git_adapter:, host_adapter:)
 
       assert_equal ["foo"], actual.map(&:name)
       assert_equal [[true]], actual.map(&:autorequire)
@@ -295,10 +295,10 @@ class TestDegem < Minitest::Test
     CONTENT
 
     with_gemspec(gem_name: "foo", content: gemspec) do
-      gems = [Bundler::Dependency.new("foo", nil)]
+      rubygems = [Bundler::Dependency.new("foo", nil)]
       git_adapter = GitTestAdapter.new
       host_adapter = GithubTestAdapter.new
-      actual = Degem::Decorate.new.call(gems:, git_adapter:, host_adapter:)
+      actual = Degem::Decorate.new.call(rubygems:, git_adapter:, host_adapter:)
 
       assert_equal ["foo"], actual.map(&:name)
       assert_equal [nil], actual.map(&:autorequire)
