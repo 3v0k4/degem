@@ -70,9 +70,12 @@ module Degem
     def finders
       [
         method(:based_on_top_module),
-        method(:based_on_top_const),
+        method(:based_on_top_composite_module),
+        method(:based_on_top_call),
+        method(:based_on_top_composite_call),
         method(:based_on_require),
-        method(:based_on_required_path),
+        method(:based_on_require_prefix_path),
+        method(:based_on_require_path),
         (method(:based_on_railtie) if rails?),
         (method(:based_on_rails) if rails?)
       ].compact
@@ -94,39 +97,106 @@ module Degem
       @grep.call(regex, dir)
     end
 
+    # gem foo -> Foo:: (but not XFoo:: or X::Foo)
     def based_on_top_module(rubygem)
+      return false if rubygem.name.include?("-")
+
+      regex = %r{
+        (?<!\w::) # Do not match if :: before
+        (?<!\w) # Do not match if \w before
+        #{rubygem.name.capitalize}
+        ::
+      }x
+      @grep.call(regex, File.dirname(gemfile_path))
+    end
+
+    # gem foo-bar -> Foo::Bar (but not XFoo::Bar or X::Foo::Bar)
+    def based_on_top_composite_module(rubygem)
       return false unless rubygem.name.include?("-")
 
-      regex = /^\b#{rubygem.name.split("-").map(&:capitalize).join("::")}\b/
+      regex = %r{
+        (?<!\w::) # Do not match if :: before
+        (?<!\w) # Do not match if \w before
+        #{rubygem.name.split("-").map(&:capitalize).join("::")}
+      }x
       found?(regex, File.dirname(gemfile_path))
     end
 
-    def based_on_top_const(rubygem)
-      return false unless rubygem.name.include?("-")
+    # gem foo -> Foo. (but not X::Foo. or XBar.)
+    def based_on_top_call(rubygem)
+      return false if rubygem.name.include?("-")
 
-      regex = /^\b#{rubygem.name.split("-").map(&:capitalize).join("")}\b/
+      regex = %r{
+        (?<!\w::) # Do not match if :: before
+        (?<!\w) # Do not match if \w before
+        #{rubygem.name.capitalize}
+        \.
+      }x
       found?(regex, File.dirname(gemfile_path))
     end
 
+    # gem foo-bar -> FooBar. (but not X::FooBar. or XFooBar.)
+    def based_on_top_composite_call(rubygem)
+      return false unless rubygem.name.include?("-")
+
+      regex = %r{
+        (?<!\w::) # Do not match if :: before
+        (?<!\w) # Do not match if \w before
+        #{rubygem.name.split("-").map(&:capitalize).join("")}
+        \.
+      }x
+      found?(regex, File.dirname(gemfile_path))
+    end
+
+    # gem foo-bar -> require 'foo-bar'
     def based_on_require(rubygem)
-      regex = /^\s*require\s+['"]#{rubygem.name}['"]/
+      regex = %r{
+        ^
+        \s*
+        require
+        \s+
+        ['"]
+        #{rubygem.name}
+        ['"]
+      }x
       found?(regex, File.dirname(gemfile_path))
     end
 
-    def based_on_required_path(rubygem)
+    # gem foo-bar -> require 'foo/bar'
+    def based_on_require_path(rubygem)
       return false unless rubygem.name.include?("-")
 
-      regex = /^\s*require\s+['"]#{rubygem.name.gsub("-", "\/")}['"]/
+      regex = %r{
+        ^
+        \s*
+        require
+        \s+
+        ['"]
+        #{rubygem.name.gsub("-", "\/")} # match foo/bar when rubygem is foo-bar
+        ['"]
+      }x
+      found?(regex, File.dirname(gemfile_path))
+    end
+
+    # gem foo -> require 'foo/'
+    def based_on_require_prefix_path(rubygem)
+      return false if rubygem.name.include?("-")
+
+      regex = %r{
+        ^
+        \s*
+        require
+        \s+
+        ['"]
+        #{rubygem.name}
+        /
+      }x
       found?(regex, File.dirname(gemfile_path))
     end
 
     def based_on_railtie(rubygem)
       gem_path = Gem::Specification.find_by_name(rubygem.name).full_gem_path
-
-      [
-        found?(/Rails::Railtie/, gem_path),
-        found?(/Rails::Engine/, gem_path)
-      ].any?
+      found?(/(Rails::Railtie|Rails::Engine)/, File.dirname(gemfile_path))
     end
 
     def based_on_rails(rubygem)
