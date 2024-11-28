@@ -99,7 +99,7 @@ module Degem
     def based_on_required_path(rubygem)
       return false unless rubygem.name.include?("-")
 
-      pattern = "^\\s*require\\s+['\\\"]foo/bar['\\\"]"
+      pattern = "^\\s*require\\s+['\\\"]#{rubygem.name.gsub("-", "\/")}['\\\"]"
       found?(pattern, File.dirname(gemfile_path))
     end
 
