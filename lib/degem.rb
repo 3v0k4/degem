@@ -29,11 +29,32 @@ module Degem
     end
   end
 
-  class FindUnused
-    require "open3"
+  class Grep
+    require "find"
 
-    def initialize(gemfile_path)
+    def call(regex, dir)
+      Find.find(dir) do |path|
+        next if path == "."
+        next Find.prune if FileTest.directory?(path) && File.basename(path).start_with?(".")
+        next Find.prune if FileTest.directory?(path) && File.basename(path) == "vendor"
+        next unless File.file?(path)
+        next if File.extname(path) != ".rb"
+
+        File.foreach(path) do |line|
+          next unless regex.match?(line)
+
+          return true
+        end
+      end
+
+      false
+    end
+  end
+
+  class FindUnused
+    def initialize(gemfile_path, grep = Grep.new)
       @gemfile_path = gemfile_path
+      @grep = grep
     end
 
     def call
@@ -69,46 +90,42 @@ module Degem
       @rubygems ||= gemfile.rubygems
     end
 
-    def found?(pattern, dir)
-      Open3
-        .capture3("rg -g '*.rb' -g -l \"#{pattern}\" #{dir}")
-        .last
-        .exitstatus
-        .zero?
+    def found?(regex, dir)
+      @grep.call(regex, dir)
     end
 
     def based_on_top_module(rubygem)
       return false unless rubygem.name.include?("-")
 
-      pattern = "^\\b#{rubygem.name.split("-").map(&:capitalize).join("::")}\\b"
-      found?(pattern, File.dirname(gemfile_path))
+      regex = /^\b#{rubygem.name.split("-").map(&:capitalize).join("::")}\b/
+      found?(regex, File.dirname(gemfile_path))
     end
 
     def based_on_top_const(rubygem)
       return false unless rubygem.name.include?("-")
 
-      pattern = "^\\b#{rubygem.name.split("-").map(&:capitalize).join("")}\\b"
-      found?(pattern, File.dirname(gemfile_path))
+      regex = /^\b#{rubygem.name.split("-").map(&:capitalize).join("")}\b/
+      found?(regex, File.dirname(gemfile_path))
     end
 
     def based_on_require(rubygem)
-      pattern = "^\\s*require\\s+['\\\"]#{rubygem.name}['\\\"]"
-      found?(pattern, File.dirname(gemfile_path))
+      regex = /^\s*require\s+['"]#{rubygem.name}['"]/
+      found?(regex, File.dirname(gemfile_path))
     end
 
     def based_on_required_path(rubygem)
       return false unless rubygem.name.include?("-")
 
-      pattern = "^\\s*require\\s+['\\\"]#{rubygem.name.gsub("-", "\/")}['\\\"]"
-      found?(pattern, File.dirname(gemfile_path))
+      regex = /^\s*require\s+['"]#{rubygem.name.gsub("-", "\/")}['"]/
+      found?(regex, File.dirname(gemfile_path))
     end
 
     def based_on_railtie(rubygem)
       gem_path = Gem::Specification.find_by_name(rubygem.name).full_gem_path
 
       [
-        found?("Rails::Railtie", gem_path),
-        found?("Rails::Engine", gem_path)
+        found?(/Rails::Railtie/, gem_path),
+        found?(/Rails::Engine/, gem_path)
       ].any?
     end
 
