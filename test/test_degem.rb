@@ -1,23 +1,35 @@
-# frozen_string_literal: true
-
 require "test_helper"
 
 class TestDegem < Minitest::Test
-  TMP_DIR = File.join(Dir.pwd, "test", "tmp")
+  TEST_DIR = File.join(Dir.pwd, "tmp", "test")
 
   def setup
-    FileUtils.mkdir_p(TMP_DIR)
+    FileUtils.rm_rf(TEST_DIR)
+    FileUtils.mkdir_p(TEST_DIR)
   end
 
   def teardown
-    FileUtils.rm_rf(TMP_DIR)
+    FileUtils.rm_rf(TEST_DIR)
   end
 
-  def with_gemfile(rubygems:, &block)
+  def with_file(path:, content:, &block)
+    path = File.join(TEST_DIR, path)
+    dir = File.dirname(path)
+    FileUtils.mkdir_p(dir)
+    file = File.new(path, "w")
+    file.write(content)
+    file.rewind
+    block.call(file.path)
+  ensure
+    file.close
+    FileUtils.rm_rf(dir)
+  end
+
+  def with_gemfile(gem_names:, &block)
     content = <<~CONTENT
       # frozen_string_literal: true
       source "https://rubygems.org"
-      #{rubygems.map { "gem '#{_1}'" }.join("\n")}
+      #{gem_names.map { "gem '#{_1}'" }.join("\n")}
     CONTENT
 
     with_file(path: "Gemfile", content: content) do |path|
@@ -25,69 +37,130 @@ class TestDegem < Minitest::Test
     end
   end
 
-  def with_file(path:, content:)
-    dir = File.join(TMP_DIR, File.dirname(path))
-    FileUtils.mkdir_p(dir)
+  def with_gemspec(gem_name:, content:, &block)
+    @map ||= {}
 
-    name = File.basename(path)
-    ext = File.extname(name)
-    base = File.basename(name, ext)
-    file = Tempfile.create([base, ext], dir)
-    file.write(content)
-    file.rewind
+    with_file(path: "specifications/#{gem_name}-1.0.0.gemspec", content: content) do |path|
+      Gem::Specification.instance_variable_set(:@load_cache, {})
+      @map[gem_name] = Gem::Specification.load(path)
 
-    yield file.path
-  rescue StandardError => e
-    puts e
-    raise
-  ensure
-    file.close
-    FileUtils.rm(file.path)
+      find_by_name = Gem::Specification.method(:find_by_name)
+      map = @map; Gem::Specification.singleton_class.class_eval do
+        remove_method(:find_by_name)
+        define_method(:find_by_name) do |name|
+          raise "[Test] Forgot to stub #{name}?" unless map.key?(name)
+
+          map[name]
+        end
+      end
+
+      block.call(path)
+    ensure
+      @map = {}
+
+      Gem::Specification.singleton_class.class_eval do
+        if method_defined?(:find_by_name)
+          remove_method(:find_by_name)
+          define_method(:find_by_name, find_by_name)
+        end
+      end
+    end
   end
 
   def with_gem(name:, source_code: "", &block)
     gemspec = <<~CONTENT
       Gem::Specification.new do |spec|
-        spec.name = "#{name}"
-        spec.version = "1"
+        spec.name    = "#{name}"
+        spec.version = "1.0.0"
+        spec.summary = "Gemspec summary"
+        spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
+        spec.authors = ["Riccardo Odone"]
       end
     CONTENT
 
     with_gemspec(gem_name: name, content: gemspec) do
-      with_file(path: "gems/#{name}-1/lib/#{name}.rb", content: source_code) do
-        block.call
+      with_file(path: "gems/#{name}-1.0.0/lib/#{name}.rb", content: source_code) do |path|
+        *parts, _lib, _rb = path.split(File::SEPARATOR)
+        block.call(parts.join(File::SEPARATOR))
       end
     end
   end
 
+  class GitTestAdapter < Degem::GitAdapter
+    require "ostruct"
+
+    ZERO = {
+      commit_hashes: [],
+      committer_dates: [],
+      commit_messages: [],
+      commit_uris: [],
+      origin_url: nil
+    }.freeze
+
+    def initialize(attributes_by_gem_name = {})
+      @attributes_by_gem_name = attributes_by_gem_name
+    end
+
+    def call(gem_name)
+      gem_attributes = @attributes_by_gem_name.fetch(gem_name.to_sym, ZERO)
+
+      OpenStruct.new(gem_attributes).tap do |attributes|
+        attributes.commit_uris =
+          commit_uris(attributes.origin_url, attributes.commit_hashes)
+      end
+    end
+  end
+
+  class GithubTestAdapter < Degem::GithubAdapter
+    require "ostruct"
+
+    ZERO = {
+      pr_numbers: [],
+      pr_titles: [],
+      pr_urls: []
+    }.freeze
+
+    def initialize(attributes_by_gem_name = {})
+      @attributes_by_gem_name = attributes_by_gem_name
+    end
+
+    def call(gem_name)
+      gem_attributes = @attributes_by_gem_name.fetch(gem_name.to_sym, ZERO)
+
+      OpenStruct.new(gem_attributes)
+    end
+  end
+
+  def padding
+    ["", " "].sample
+  end
+
   def test_it_returns_the_parsed_gemfile
-    with_gemfile(rubygems: ["foo"]) do |path|
+    with_gemfile(gem_names: ["foo"]) do |path|
       actual = Degem::ParseGemfile.new.call(path)
       assert_equal ["foo"], actual.rubygems.map(&:name)
     end
   end
 
   def test_it_detects_rails
-    with_gemfile(rubygems: ["foo"]) do |path|
+    with_gemfile(gem_names: ["foo"]) do |path|
       actual = Degem::ParseGemfile.new.call(path)
       refute actual.rails?
     end
 
-    with_gemfile(rubygems: ["rails"]) do |path|
+    with_gemfile(gem_names: ["rails"]) do |path|
       actual = Degem::ParseGemfile.new.call(path)
       assert actual.rails?
     end
   end
 
-  def test_it_detects_unused_gems_based_on_the_top_level_module
-    content = <<~CONTENT
-      Foo::Bar.new.call
-    CONTENT
+  def test_it_detects_unused_gems_based_on_the_top_level_module_call
+    content = "Foo::Bar.new.call"
 
-    with_gemfile(rubygems: %w[foo foo-bar bar]) do |path|
+    with_gemfile(gem_names: %w[foo-bar bar]) do |gemfile_path|
       with_file(path: "app/services/baz.rb", content: content) do
-        actual = Degem::FindUnused.new(path).call
-        assert_equal %w[foo bar], actual.map(&:name)
+        actual = Degem::FindUnused.new(gemfile_path).call
+        assert_equal ["bar"], actual.map(&:name)
       end
     end
   end
@@ -97,7 +170,7 @@ class TestDegem < Minitest::Test
       FooBar.new.call
     CONTENT
 
-    with_gemfile(rubygems: %w[foo foo-bar bar]) do |path|
+    with_gemfile(gem_names: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
         actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
@@ -110,7 +183,7 @@ class TestDegem < Minitest::Test
       require 'foo-bar'
     CONTENT
 
-    with_gemfile(rubygems: %w[foo foo-bar bar]) do |path|
+    with_gemfile(gem_names: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
         actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
@@ -123,7 +196,7 @@ class TestDegem < Minitest::Test
       require 'foo/bar'
     CONTENT
 
-    with_gemfile(rubygems: %w[foo foo-bar bar]) do |path|
+    with_gemfile(gem_names: %w[foo foo-bar bar]) do |path|
       with_file(path: "app/services/baz.rb", content: content) do
         actual = Degem::FindUnused.new(path).call
         assert_equal %w[foo bar], actual.map(&:name)
@@ -132,7 +205,7 @@ class TestDegem < Minitest::Test
   end
 
   def test_with_a_rails_bundle_it_excludes_rails
-    with_gemfile(rubygems: %w[rails]) do |path|
+    with_gemfile(gem_names: %w[rails]) do |path|
       with_gem(name: "rails") do
         actual = Degem::FindUnused.new(path).call
         assert_empty actual.map(&:name)
@@ -149,7 +222,7 @@ class TestDegem < Minitest::Test
         end
       CONTENT
 
-      with_gemfile(rubygems: %w[rails foo]) do |path|
+      with_gemfile(gem_names: %w[rails foo]) do |path|
         with_gem(name: "rails", source_code: "") do
           with_gem(name: "foo", source_code: content) do
             actual = Degem::FindUnused.new(path).call
@@ -157,80 +230,6 @@ class TestDegem < Minitest::Test
           end
         end
       end
-    end
-  end
-
-  def with_gemspec(gem_name:, content:)
-    @map ||= {}
-
-    with_file(path: "#{gem_name}/#{gem_name}.gemspec", content: content) do |path|
-      @map[gem_name] = Gem::Specification.load(path)
-
-      find_by_name = Gem::Specification.method(:find_by_name)
-      map = @map; Gem::Specification.singleton_class.class_eval do
-        remove_method(:find_by_name)
-        define_method(:find_by_name) do |name|
-          raise "[Test] Forgot to stub #{name}?" unless map.key?(name)
-
-          map[name]
-        end
-      end
-
-      yield path
-    ensure
-      @map = {}
-
-      Gem::Specification.singleton_class.class_eval do
-        if method_defined?(:find_by_name)
-          remove_method(:find_by_name)
-          define_method(:find_by_name, find_by_name)
-        end
-      end
-    end
-  end
-
-  class GitTestAdapter < Degem::GitAdapter
-    require "ostruct"
-
-    DEFAULTS = {
-      commit_hashes: ["f49bd04a116cf25e10a674fde8a52eca7ce18772"],
-      committer_dates: ["1970-01-01"],
-      commit_messages: ["default commit"],
-      commit_uris: ["http://example.com/default"],
-      origin_url: "git@github.com:3v0k4/default.git"
-    }.freeze
-
-    def initialize(attributes_by_gem_name = {})
-      @attributes_by_gem_name = attributes_by_gem_name
-    end
-
-    def call(gem_name)
-      gem_attributes = @attributes_by_gem_name[gem_name.to_sym] || DEFAULTS
-
-      OpenStruct.new(gem_attributes).tap do |attributes|
-        attributes.commit_uris =
-          commit_uris(attributes.origin_url, attributes.commit_hashes)
-      end
-    end
-  end
-
-  class GithubTestAdapter < Degem::GithubAdapter
-    require "ostruct"
-
-    DEFAULTS = {
-      pr_numbers: [123],
-      pr_titles: ["default title"],
-      pr_urls: ["https://github.com/3v0k4/default/pull/123"]
-    }.freeze
-
-    def initialize(attributes_by_gem_name = {})
-      @attributes_by_gem_name = attributes_by_gem_name
-    end
-
-    def call(gem_name)
-      gem_attributes = @attributes_by_gem_name[gem_name.to_sym] || DEFAULTS
-
-      OpenStruct.new(gem_attributes)
     end
   end
 
