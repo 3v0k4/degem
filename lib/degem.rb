@@ -52,8 +52,9 @@ module Degem
   end
 
   class FindUnused
-    def initialize(gemfile_path, grep = Grep.new)
+    def initialize(gemfile_path:, gem_specification:, grep: Grep.new)
       @gemfile_path = gemfile_path
+      @gem_specification = gem_specification
       @grep = grep
     end
 
@@ -195,7 +196,7 @@ module Degem
     end
 
     def based_on_railtie(rubygem)
-      gem_path = Gem::Specification.find_by_name(rubygem.name).full_gem_path
+      gem_path = @gem_specification.find_by_name(rubygem.name).full_gem_path
       found?(/(Rails::Railtie|Rails::Engine)/, File.dirname(gem_path))
     end
 
@@ -228,9 +229,13 @@ module Degem
   end
 
   class Decorate
+    def initialize(gem_specification:)
+      @gem_specification = gem_specification
+    end
+
     def call(rubygems:, git_adapter:, host_adapter:)
       rubygems.map do |rubygem|
-        gemspec = Gem::Specification.find_by_name(rubygem.name)
+        gemspec = @gem_specification.find_by_name(rubygem.name)
         git = git_adapter.call(rubygem.name)
         host = host_adapter.call(rubygem.name)
         Decorated.new(rubygem, gemspec, git, host)
