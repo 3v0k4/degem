@@ -281,7 +281,7 @@ module Degem
 
         decorated.commits.each.with_index do |commit, i|
           @stderr.puts("#{commit.hash[0..6]} (#{commit.date}) #{commit.message}")
-          @stderr.puts(commit.uri)
+          @stderr.puts(commit.url)
           @stderr.puts if i+1 == decorated.commits.size
         end
 

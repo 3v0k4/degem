@@ -89,7 +89,7 @@ class TestDegem < Minitest::Test
 
     def add_commit(gem_name, commit)
       @map[gem_name] ||= []
-      attributes = commit.merge(uri: to_commit_url(origin_url, commit.fetch(:hash)))
+      attributes = commit.merge(url: to_commit_url(origin_url, commit.fetch(:hash)))
       @map[gem_name] += [OpenStruct.new(attributes)]
     end
 
@@ -406,7 +406,7 @@ class TestDegem < Minitest::Test
         assert_equal ["initial commit"], decorated.commits.map(&:message)
         assert_equal(
           ["https://github.com/3v0k4/foo/commit/afb779653f324eb1c6b486c871402a504a8fda42"],
-          decorated.commits.map(&:uri)
+          decorated.commits.map(&:url)
         )
       end
     end
