@@ -392,10 +392,14 @@ class TestDegem < Minitest::Test
     end
   end
 
-  def test_it_decorates_the_gem
+  def test_it_decorates_the_result_with_git_and_github_information
     gemspec = <<~CONTENT
       Gem::Specification.new do |spec|
-        spec.name = "foo"
+        spec.name    = "foo"
+        spec.version = "1.0.0"
+        spec.summary = "Gemspec summary"
+        spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
+        spec.authors = ["Riccardo Odone"]
         spec.homepage = "http://example.com/homepage"
         spec.metadata["source_code_uri"] = "http://example.com/source"
       end
@@ -447,10 +451,14 @@ class TestDegem < Minitest::Test
     end
   end
 
-  def test_with_minimal_gemspec_it_decorates_the_gem
+  def test_with_minimal_gemspec_it_decorates_the_result_with_git_and_github_information
     gemspec = <<~CONTENT
       Gem::Specification.new do |spec|
         spec.name = "foo"
+        spec.version = "1.0.0"
+        spec.summary = "Gemspec summary"
+        spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
+        spec.authors = ["Riccardo Odone"]
       end
     CONTENT
 
