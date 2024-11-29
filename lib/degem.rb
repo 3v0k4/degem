@@ -223,12 +223,11 @@ module Degem
   end
 
   class Decorated < MultiDelegator
-    attr_reader :commits, :prs
+    attr_reader :commits
 
-    def initialize(_, _, commits, prs)
+    def initialize(_, _, commits)
       super
       @commits = commits
-      @prs = prs
     end
 
     def source_code_uri
@@ -241,12 +240,11 @@ module Degem
       @gem_specification = gem_specification
     end
 
-    def call(rubygems:, git_adapter:, host_adapter:)
+    def call(rubygems:, git_adapter:)
       rubygems.map do |rubygem|
         gemspec = @gem_specification.find_by_name(rubygem.name)
         git = git_adapter.call(rubygem.name)
-        host = host_adapter.call(rubygem.name)
-        Decorated.new(rubygem, gemspec, git, host)
+        Decorated.new(rubygem, gemspec, git)
       end
     end
   end
@@ -270,9 +268,6 @@ module Degem
     end
   end
 
-  class GithubAdapter
-  end
-
   class Report
     def initialize(stderr)
       @stderr = stderr
@@ -294,12 +289,6 @@ module Degem
           @stderr.puts("#{commit.hash[0..6]} (#{commit.date}) #{commit.message}")
           @stderr.puts(commit.uri)
           @stderr.puts if i+1 == decorated.commits.size
-        end
-
-        decorated.prs.each.with_index do |pr, i|
-          @stderr.puts("##{pr.number} #{pr.title}")
-          @stderr.puts(pr.url)
-          @stderr.puts if i+1 == decorated.prs.size
         end
 
         @stderr.puts
