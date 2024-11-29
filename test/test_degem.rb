@@ -80,45 +80,38 @@ class TestDegem < Minitest::Test
   class GitTestAdapter < Degem::GitAdapter
     require "ostruct"
 
-    ZERO = {
-      commit_hashes: [],
-      committer_dates: [],
-      commit_messages: [],
-      commit_uris: [],
-      origin_url: nil
-    }.freeze
+    attr_reader :origin_url
 
-    def initialize(attributes_by_gem_name = {})
-      @attributes_by_gem_name = attributes_by_gem_name
+    def initialize(origin_url = nil)
+      @origin_url = origin_url
+      @map = {}
+    end
+
+    def add_commit(gem_name, commit)
+      @map[gem_name] ||= []
+      attributes = commit.merge(uri: to_commit_url(origin_url, commit.fetch(:hash)))
+      @map[gem_name] += [OpenStruct.new(attributes)]
     end
 
     def call(gem_name)
-      gem_attributes = @attributes_by_gem_name.fetch(gem_name.to_sym, ZERO)
-
-      OpenStruct.new(gem_attributes).tap do |attributes|
-        attributes.commit_uris =
-          commit_uris(attributes.origin_url, attributes.commit_hashes)
-      end
+      @map.fetch(gem_name, [])
     end
   end
 
   class GithubTestAdapter < Degem::GithubAdapter
     require "ostruct"
 
-    ZERO = {
-      pr_numbers: [],
-      pr_titles: [],
-      pr_urls: []
-    }.freeze
+    def initialize
+      @map = {}
+    end
 
-    def initialize(attributes_by_gem_name = {})
-      @attributes_by_gem_name = attributes_by_gem_name
+    def add_pr(gem_name, pr)
+      @map[gem_name] ||= []
+      @map[gem_name] += [OpenStruct.new(pr)]
     end
 
     def call(gem_name)
-      gem_attributes = @attributes_by_gem_name.fetch(gem_name.to_sym, ZERO)
-
-      OpenStruct.new(gem_attributes)
+      @map.fetch(gem_name, [])
     end
   end
 
@@ -408,46 +401,44 @@ class TestDegem < Minitest::Test
     with_gemspec(gem_name: "foo", content: gemspec) do |foo_gemspec_path|
       rubygems = [Bundler::Dependency.new("foo", nil, "require" => true)]
 
-      git_hash = {
-        foo: {
-          commit_hashes: ["afb779653f324eb1c6b486c871402a504a8fda42"],
-          committer_dates: ["2020-01-12"],
-          commit_messages: ["initial commit"],
-          origin_url: "git@github.com:3v0k4/foo.git"
-        }
-      }
-      git_adapter = GitTestAdapter.new(git_hash)
+      git_adapter = GitTestAdapter.new("git@github.com:3v0k4/foo.git")
+      git_adapter.add_commit("foo", {
+        hash: "afb779653f324eb1c6b486c871402a504a8fda42",
+        date: "2020-01-12",
+        message: "initial commit"
+      })
 
-      github_hash = {
-        foo: {
-          pr_numbers: [1],
-          pr_titles: ["first pr"],
-          pr_urls: ["https://github.com/3v0k4/foo/pull/1"]
-        }
-      }
-      host_adapter = GithubTestAdapter.new(github_hash)
+      host_adapter = GithubTestAdapter.new
+      host_adapter.add_pr("foo", {
+        number: 1,
+        title: "first pr",
+        url: "https://github.com/3v0k4/foo/pull/1"
+      })
 
       gem_specification = TestableGemSpecification.new(foo_gemspec_path)
 
-      actual = Degem::Decorate.new(gem_specification:).call(rubygems:, git_adapter:, host_adapter:)
+      decorateds = Degem::Decorate.new(gem_specification:).call(rubygems:, git_adapter:, host_adapter:)
 
-      assert_equal ["foo"], actual.map(&:name)
-      assert_equal [[true]], actual.map(&:autorequire)
-      assert_equal ["http://example.com/homepage"], actual.map(&:homepage)
-      assert_equal ["http://example.com/source"], actual.map(&:source_code_uri)
+      assert_equal ["foo"], decorateds.map(&:name)
+      assert_equal [[true]], decorateds.map(&:autorequire)
+      assert_equal ["http://example.com/homepage"], decorateds.map(&:homepage)
+      assert_equal ["http://example.com/source"], decorateds.map(&:source_code_uri)
 
-      commit_hashes = git_hash.dig(:foo, :commit_hashes)
-      assert_equal [commit_hashes], actual.map(&:commit_hashes)
-      assert_equal [git_hash.dig(:foo, :committer_dates)], actual.map(&:committer_dates)
-      assert_equal [git_hash.dig(:foo, :commit_messages)], actual.map(&:commit_messages)
-      assert_equal(
-        [["https://github.com/3v0k4/foo/commit/#{commit_hashes.first}"]],
-        actual.map(&:commit_uris)
-      )
+      decorateds.each do |decorated|
+        assert_equal ["afb779653f324eb1c6b486c871402a504a8fda42"], decorated.commits.map(&:hash)
+        assert_equal ["2020-01-12"], decorated.commits.map(&:date)
+        assert_equal ["initial commit"], decorated.commits.map(&:message)
+        assert_equal(
+          ["https://github.com/3v0k4/foo/commit/afb779653f324eb1c6b486c871402a504a8fda42"],
+          decorated.commits.map(&:uri)
+        )
+      end
 
-      assert_equal [github_hash.dig(:foo, :pr_numbers)], actual.map(&:pr_numbers)
-      assert_equal [github_hash.dig(:foo, :pr_titles)], actual.map(&:pr_titles)
-      assert_equal [github_hash.dig(:foo, :pr_urls)], actual.map(&:pr_urls)
+      decorateds.each do |decorated|
+        assert_equal [1], decorated.prs.map(&:number)
+        assert_equal ["first pr"], decorated.prs.map(&:title)
+        assert_equal ["https://github.com/3v0k4/foo/pull/1"], decorated.prs.map(&:url)
+      end
     end
   end
 
@@ -475,6 +466,86 @@ class TestDegem < Minitest::Test
       assert_equal [nil], actual.map(&:autorequire)
       assert_equal [nil], actual.map(&:homepage)
       assert_equal [nil], actual.map(&:source_code_uri)
+    end
+  end
+
+  def test_it_reports_with_git_and_github_information
+    foo_gemspec = <<~CONTENT
+      Gem::Specification.new do |spec|
+        spec.name = "foo"
+        spec.version = "1.0.0"
+        spec.summary = "Gemspec summary"
+        spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
+        spec.authors = ["Riccardo Odone"]
+        spec.homepage = "http://example.com/homepage"
+        spec.metadata["source_code_uri"] = "https://github.com/3v0k4/foo"
+      end
+    CONTENT
+
+    bar_gemspec = <<~CONTENT
+      Gem::Specification.new do |spec|
+        spec.name = "bar"
+        spec.version = "1.0.0"
+        spec.summary = "Gemspec summary"
+        spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
+        spec.authors = ["Riccardo Odone"]
+      end
+    CONTENT
+
+    with_gemspec(gem_name: "foo", content: foo_gemspec) do |foo_gemspec_path|
+      with_gemspec(gem_name: "bar", content: bar_gemspec) do |bar_gemspec_path|
+        rubygems = [
+          Bundler::Dependency.new("foo", nil, "require" => true),
+          Bundler::Dependency.new("bar", nil, "require" => true)
+        ]
+
+        git_adapter = GitTestAdapter.new("git@github.com:3v0k4/foo.git")
+        git_adapter.add_commit("foo", {
+          hash: "afb779653f324eb1c6b486c871402a504a8fda42",
+          date: "2020-01-12",
+          message: "initial commit"
+        })
+        git_adapter.add_commit("foo", {
+          hash: "f30156dd455d1f3f0b2b3e13de77ba5255096d61",
+          date: "2020-01-14",
+          message: "second commit"
+        })
+
+        host_adapter = GithubTestAdapter.new
+        host_adapter.add_pr("foo", {
+          number: 1,
+          title: "first pr",
+          url: "https://github.com/3v0k4/foo/pull/1"
+        })
+        host_adapter.add_pr("foo", {
+          number: 2,
+          title: "second pr",
+          url: "https://github.com/3v0k4/foo/pull/2"
+        })
+
+        gem_specification = TestableGemSpecification.new([foo_gemspec_path, bar_gemspec_path])
+
+        decorated = Degem::Decorate.new(gem_specification:).call(rubygems:, git_adapter:, host_adapter:)
+
+        stderr = StringIO.new
+        Degem::Report.new(stderr).call(decorated)
+
+        assert_includes stderr.string, "foo: https://github.com/3v0k4/foo\n"
+        assert_includes stderr.string, "=================================\n\n"
+
+        assert_includes stderr.string, "afb7796 (2020-01-12) initial commit\n"
+        assert_includes stderr.string, "https://github.com/3v0k4/foo/commit/afb779653f324eb1c6b486c871402a504a8fda42\n"
+        assert_includes stderr.string, "f30156d (2020-01-14) second commit\n"
+        assert_includes stderr.string, "https://github.com/3v0k4/foo/commit/f30156dd455d1f3f0b2b3e13de77ba5255096d61\n\n"
+
+        assert_includes stderr.string, "#1 first pr\n"
+        assert_includes stderr.string, "https://github.com/3v0k4/foo/pull/1\n"
+        assert_includes stderr.string, "#2 second pr\n"
+        assert_includes stderr.string, "https://github.com/3v0k4/foo/pull/2\n\n\n"
+
+        assert_includes stderr.string, "bar\n"
+        assert_includes stderr.string, "===\n\n\n"
+      end
     end
   end
 end

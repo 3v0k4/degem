@@ -223,6 +223,14 @@ module Degem
   end
 
   class Decorated < MultiDelegator
+    attr_reader :commits, :prs
+
+    def initialize(_, _, commits, prs)
+      super
+      @commits = commits
+      @prs = prs
+    end
+
     def source_code_uri
       metadata["source_code_uri"] || homepage
     end
@@ -263,5 +271,39 @@ module Degem
   end
 
   class GithubAdapter
+  end
+
+  class Report
+    def initialize(stderr)
+      @stderr = stderr
+    end
+
+    def call(decorateds)
+      decorateds.each do |decorated|
+        heading =
+          if decorated.source_code_uri.nil?
+            decorated.name
+          else
+            "#{decorated.name}: #{decorated.source_code_uri}"
+          end
+        @stderr.puts(heading)
+        @stderr.puts("=" * heading.size)
+        @stderr.puts
+
+        decorated.commits.each.with_index do |commit, i|
+          @stderr.puts("#{commit.hash[0..6]} (#{commit.date}) #{commit.message}")
+          @stderr.puts(commit.uri)
+          @stderr.puts if i+1 == decorated.commits.size
+        end
+
+        decorated.prs.each.with_index do |pr, i|
+          @stderr.puts("##{pr.number} #{pr.title}")
+          @stderr.puts(pr.url)
+          @stderr.puts if i+1 == decorated.prs.size
+        end
+
+        @stderr.puts
+      end
+    end
   end
 end
