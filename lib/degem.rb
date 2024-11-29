@@ -196,7 +196,7 @@ module Degem
 
     def based_on_railtie(rubygem)
       gem_path = Gem::Specification.find_by_name(rubygem.name).full_gem_path
-      found?(/(Rails::Railtie|Rails::Engine)/, File.dirname(gemfile_path))
+      found?(/(Rails::Railtie|Rails::Engine)/, File.dirname(gem_path))
     end
 
     def based_on_rails(rubygem)
