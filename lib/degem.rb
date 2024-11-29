@@ -252,12 +252,6 @@ module Degem
   class GitAdapter
     private
 
-    def commit_uris(origin_url, commit_hashes)
-      commit_hashes.map do |commit_hash|
-        to_commit_url(origin_url, commit_hash)
-      end
-    end
-
     def parse(origin_url)
       origin_url.match(%r{github\.com[:/](.+?)(\.git)?$})[1]
     end
