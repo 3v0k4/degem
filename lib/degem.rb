@@ -120,7 +120,7 @@ module Degem
         #{rubygem.name.capitalize}
         ::
       }x
-      @grep.call(regex, File.dirname(gemfile_path))
+      found?(regex, File.dirname(gemfile_path))
     end
 
     # gem foo-bar -> Foo::Bar (but not XFoo::Bar or X::Foo::Bar)
