@@ -2,6 +2,7 @@ require "test_helper"
 
 class TestDegem < Minitest::Test
   TEST_DIR = File.join(Dir.pwd, "tmp", "test")
+  GEM_DIR = File.join(Dir.pwd, "tmp", "gem")
 
   def setup
     FileUtils.rm_rf(TEST_DIR)
@@ -583,5 +584,39 @@ class TestDegem < Minitest::Test
     actual = testable_git_adapter.new.call("foo")
 
     assert_empty actual
+  end
+
+  def test_e2e__it_prints_unused_gems
+    require "open3"
+
+    # FileUtils.rm_rf(GEM_DIR) # Uncomment for the full E2E test
+    skip = Dir.exist?(GEM_DIR)
+    FileUtils.mkdir_p(GEM_DIR) unless skip
+
+    Bundler.with_unbundled_env do
+      Dir.chdir(GEM_DIR) do
+        Open3.capture3("bundle gem myapp") unless skip
+
+        Dir.chdir(File.join(GEM_DIR, "myapp")) do
+          Open3.capture3("bundle config set --local path vendor") unless skip
+          Open3.capture3("bundle install") unless skip
+          Open3.capture3("git commit --all -m 'init'") unless skip
+          Open3.capture3("bundle add favicon_factory") unless skip
+          Open3.capture3("git commit --all -m 'add favicon_factory'") unless skip
+          Open3.capture3("bundle add --path '../../..' degem") unless skip
+          Open3.capture3('echo \'require "rubocop"\' >> lib/myapp.rb') unless skip
+
+          out, err, status = Open3.capture3("bundle exec degem Gemfile")
+
+          assert_equal 0, status.exitstatus
+          refute_includes err, "myapp" # required in tests
+          assert_includes err, "rake"
+          refute_includes err, "minitest" # required in tests
+          refute_includes err, "rubocop" # required in lib/myapp.rb (see above)
+          assert_includes err, "favicon_factory"
+          assert_includes err, "degem"
+        end
+      end
+    end
   end
 end

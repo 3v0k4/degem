@@ -311,4 +311,25 @@ module Degem
       end
     end
   end
+
+  class Cli
+    def self.call
+      exit new($stderr).call(ARGV[0])
+    end
+
+    def initialize(stderr)
+      @stderr = stderr
+    end
+
+    def call(gemfile_path)
+      rubygems = FindUnused
+        .new(gemfile_path: gemfile_path, gem_specification: Gem::Specification)
+        .call
+      decorated = Decorate
+        .new(gem_specification: Gem::Specification)
+        .call(rubygems:, git_adapter: GitAdapter.new)
+      Report.new(@stderr).call(decorated)
+      0
+    end
+  end
 end
