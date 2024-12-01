@@ -250,14 +250,36 @@ module Degem
   end
 
   class GitAdapter
-    private
+    require "ostruct"
+    require "open3"
 
-    def parse(origin_url)
-      origin_url.match(%r{github\.com[:/](.+?)(\.git)?$})[1]
+    def call(gem_name)
+      out, _err, status = git_log(gem_name)
+      return [] unless status.zero?
+
+      out.split("\n").map do |raw_commit|
+        hash, date, title = raw_commit.split("\t")
+        OpenStruct.new(hash:, date:, title:, url: to_commit_url(hash))
+      end
     end
 
-    def to_commit_url(origin_url, commit_hash)
-      repository = parse(origin_url)
+    private
+
+    def git_remote_origin_url
+      out, err, status = Open3.capture3("git remote get-url origin")
+      [out, err, status.exitstatus]
+    end
+
+    def git_log(gem_name)
+      out, err, status = Open3.capture3("git log --pretty=format:'%H%x09%cs%x09%s' --pickaxe-regex -S '[\"'']#{gem_name}[\"'']' -- Gemfile | cat")
+      [out, err, status.exitstatus]
+    end
+
+    def to_commit_url(commit_hash)
+      remote, _, status = git_remote_origin_url
+      return "" unless status.zero?
+
+      repository = remote.match(%r{github\.com[:/](.+?)(\.git)})[1]
       "https://github.com/#{repository}/commit/#{commit_hash}"
     end
   end
@@ -280,7 +302,7 @@ module Degem
         @stderr.puts
 
         decorated.commits.each.with_index do |commit, i|
-          @stderr.puts("#{commit.hash[0..6]} (#{commit.date}) #{commit.message}")
+          @stderr.puts("#{commit.hash[0..6]} (#{commit.date}) #{commit.title}")
           @stderr.puts(commit.url)
           @stderr.puts if i+1 == decorated.commits.size
         end

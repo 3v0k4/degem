@@ -77,10 +77,8 @@ class TestDegem < Minitest::Test
     end
   end
 
-  class GitTestAdapter < Degem::GitAdapter
+  class TestableGitAdapter < Degem::GitAdapter
     require "ostruct"
-
-    attr_reader :origin_url
 
     def initialize(origin_url = nil)
       @origin_url = origin_url
@@ -89,12 +87,23 @@ class TestDegem < Minitest::Test
 
     def add_commit(gem_name, commit)
       @map[gem_name] ||= []
-      attributes = commit.merge(url: to_commit_url(origin_url, commit.fetch(:hash)))
-      @map[gem_name] += [OpenStruct.new(attributes)]
+      @map[gem_name] += [OpenStruct.new(commit)]
     end
 
-    def call(gem_name)
-      @map.fetch(gem_name, [])
+    private
+
+    def git_remote_origin_url
+      [@origin_url, nil, 0]
+    end
+
+    def git_log(gem_name)
+      return [nil, nil, 1] unless @map.key?(gem_name)
+
+      out = @map.fetch(gem_name).map do |commit|
+        [commit.hash, commit.date, commit.title].join("\t")
+      end.join("\n")
+
+      [out, nil, 0]
     end
   end
 
@@ -384,11 +393,11 @@ class TestDegem < Minitest::Test
     with_gemspec(gem_name: "foo", content: gemspec) do |foo_gemspec_path|
       rubygems = [Bundler::Dependency.new("foo", nil, "require" => true)]
 
-      git_adapter = GitTestAdapter.new("git@github.com:3v0k4/foo.git")
+      git_adapter = TestableGitAdapter.new("git@github.com:3v0k4/foo.git")
       git_adapter.add_commit("foo", {
         hash: "afb779653f324eb1c6b486c871402a504a8fda42",
         date: "2020-01-12",
-        message: "initial commit"
+        title: "initial commit"
       })
 
       gem_specification = TestableGemSpecification.new(foo_gemspec_path)
@@ -403,7 +412,7 @@ class TestDegem < Minitest::Test
       decorateds.each do |decorated|
         assert_equal ["afb779653f324eb1c6b486c871402a504a8fda42"], decorated.commits.map(&:hash)
         assert_equal ["2020-01-12"], decorated.commits.map(&:date)
-        assert_equal ["initial commit"], decorated.commits.map(&:message)
+        assert_equal ["initial commit"], decorated.commits.map(&:title)
         assert_equal(
           ["https://github.com/3v0k4/foo/commit/afb779653f324eb1c6b486c871402a504a8fda42"],
           decorated.commits.map(&:url)
@@ -425,7 +434,7 @@ class TestDegem < Minitest::Test
 
     with_gemspec(gem_name: "foo", content: gemspec) do |foo_gemspec_path|
       rubygems = [Bundler::Dependency.new("foo", nil)]
-      git_adapter = GitTestAdapter.new
+      git_adapter = TestableGitAdapter.new
       gem_specification = TestableGemSpecification.new(foo_gemspec_path)
 
       actual = Degem::Decorate.new(gem_specification:).call(rubygems:, git_adapter:)
@@ -467,16 +476,16 @@ class TestDegem < Minitest::Test
           Bundler::Dependency.new("bar", nil, "require" => true)
         ]
 
-        git_adapter = GitTestAdapter.new("git@github.com:3v0k4/foo.git")
+        git_adapter = TestableGitAdapter.new("git@github.com:3v0k4/foo.git")
         git_adapter.add_commit("foo", {
           hash: "afb779653f324eb1c6b486c871402a504a8fda42",
           date: "2020-01-12",
-          message: "initial commit"
+          title: "initial commit"
         })
         git_adapter.add_commit("foo", {
           hash: "f30156dd455d1f3f0b2b3e13de77ba5255096d61",
           date: "2020-01-14",
-          message: "second commit"
+          title: "second commit"
         })
 
         gem_specification = TestableGemSpecification.new([foo_gemspec_path, bar_gemspec_path])
@@ -498,5 +507,81 @@ class TestDegem < Minitest::Test
         assert_includes stderr.string, "===\n\n\n"
       end
     end
+  end
+
+  def test_it_returns_parsed_commits
+    testable_git_adapter = Class.new(Degem::GitAdapter) do
+      def git_remote_origin_url
+        out = " git@github.com:3v0k4/foo.git    "
+        [out, nil, 0]
+      end
+
+      def git_log(_)
+        out = [
+          [
+            "afb779653f324eb1c6b486c871402a504a8fda42",
+            "2020-01-12",
+            "initial commit"
+          ]
+            .join("\t")
+        ]
+          .join("\n")
+
+        [out, nil, 0]
+      end
+    end
+
+    actual = testable_git_adapter.new.call("foo")
+
+    assert_equal ["afb779653f324eb1c6b486c871402a504a8fda42"], actual.map(&:hash)
+    assert_equal ["2020-01-12"], actual.map(&:date)
+    assert_equal ["initial commit"], actual.map(&:title)
+    assert_equal ["https://github.com/3v0k4/foo/commit/afb779653f324eb1c6b486c871402a504a8fda42"], actual.map(&:url)
+  end
+
+  def test_within_repository_without_origin_it_returns_parsed_commits
+    testable_git_adapter = Class.new(Degem::GitAdapter) do
+      def git_remote_origin_url
+        [nil, "error: No such remote 'origin'", 1]
+      end
+
+      def git_log(_)
+        out = [
+          [
+            "afb779653f324eb1c6b486c871402a504a8fda42",
+            "2020-01-12",
+            "initial commit"
+          ]
+            .join("\t")
+        ]
+          .join("\n")
+
+        [out, nil, 0]
+      end
+    end
+
+    actual = testable_git_adapter.new.call("foo")
+
+    assert_equal ["afb779653f324eb1c6b486c871402a504a8fda42"], actual.map(&:hash)
+    assert_equal ["2020-01-12"], actual.map(&:date)
+    assert_equal ["initial commit"], actual.map(&:title)
+    assert_equal [""], actual.map(&:url)
+  end
+
+  def test_within_repository_without_commits_it_returns_parsed_commits
+    testable_git_adapter = Class.new(Degem::GitAdapter) do
+      def git_remote_origin_url
+        out = " git@github.com:3v0k4/foo.git    "
+        [out, nil, 0]
+      end
+
+      def git_log(_)
+        [nil, "fatal: your current branch 'main' does not have any commits yet", 1]
+      end
+    end
+
+    actual = testable_git_adapter.new.call("foo")
+
+    assert_empty actual
   end
 end
