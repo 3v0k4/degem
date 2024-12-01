@@ -4,22 +4,34 @@ require_relative "degem/version"
 
 module Degem
   class Gemfile
-    def initialize(definition)
-      @definition = definition
+    def initialize(dsl)
+      @dsl = dsl
     end
 
     def rubygems
-      @rubygems ||= @definition.dependencies
+      @rubygems ||= gemfile_dependencies + gemspec_dependencies
     end
 
     def rails?
-      rubygems.map(&:name).include?("rails")
+      @rails ||= rubygems.map(&:name).include?("rails")
+    end
+
+    private
+
+    def gemfile_dependencies
+      @dsl.dependencies
+    end
+
+    def gemspec_dependencies
+      @dsl.gemspecs.flat_map(&:dependencies)
     end
   end
 
   class ParseGemfile
     def call(gemfile_path)
-      Gemfile.new(definition(gemfile_path))
+      dsl = Bundler::Dsl.new
+      dsl.eval_gemfile(gemfile_path)
+      Gemfile.new(dsl)
     end
 
     private

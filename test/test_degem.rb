@@ -13,6 +13,10 @@ class TestDegem < Minitest::Test
     FileUtils.rm_rf(TEST_DIR)
   end
 
+  def assert_array(xs, ys, msg = nil)
+    assert_equal xs.sort, ys.sort, msg
+  end
+
   def with_file(path:, content:, &block)
     path = File.join(TEST_DIR, path)
     dir = File.dirname(path)
@@ -132,6 +136,29 @@ class TestDegem < Minitest::Test
       bundle_install(["foo"]) do
         actual = Degem::ParseGemfile.new.call(path)
         assert_equal ["foo"], actual.rubygems.map(&:name)
+      end
+    end
+  end
+
+  def test_it_returns_the_parsed_gemfile_including_its_gemspec
+    gemspec = <<~CONTENT
+      Gem::Specification.new do |spec|
+        spec.name    = "bar"
+        spec.version = "1.0.0"
+        spec.summary = "Gemspec summary"
+        spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
+        spec.authors = ["Riccardo Odone"]
+        spec.add_dependency "baz", "~> 1.0"
+      end
+    CONTENT
+
+    with_gemfile do |gemfile_path|
+      bundle_install(["foo"]) do
+        File.write(gemfile_path, "\ngemspec", mode: "a")
+        with_file(path: File.join("app", "bar.gemspec"), content: gemspec) do
+          actual = Degem::ParseGemfile.new.call(gemfile_path)
+          assert_array %w[foo bar baz], actual.rubygems.map(&:name)
+        end
       end
     end
   end
