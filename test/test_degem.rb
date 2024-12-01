@@ -596,6 +596,36 @@ class TestDegem < Minitest::Test
     assert_equal [""], actual.map(&:url)
   end
 
+  def test_within_repository_with_unsupported_host_it_returns_parsed_commits
+    testable_git_adapter = Class.new(Degem::GitAdapter) do
+      def git_remote_origin_url
+        out = "unsupported"
+        [out, nil, 0]
+      end
+
+      def git_log(_)
+        out = [
+          [
+            "afb779653f324eb1c6b486c871402a504a8fda42",
+            "2020-01-12",
+            "initial commit"
+          ]
+            .join("\t")
+        ]
+          .join("\n")
+
+        [out, nil, 0]
+      end
+    end
+
+    actual = testable_git_adapter.new.call("foo")
+
+    assert_equal ["afb779653f324eb1c6b486c871402a504a8fda42"], actual.map(&:hash)
+    assert_equal ["2020-01-12"], actual.map(&:date)
+    assert_equal ["initial commit"], actual.map(&:title)
+    assert_equal [""], actual.map(&:url)
+  end
+
   def test_within_repository_without_commits_it_returns_parsed_commits
     testable_git_adapter = Class.new(Degem::GitAdapter) do
       def git_remote_origin_url

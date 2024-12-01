@@ -291,7 +291,9 @@ module Degem
       remote, _, status = git_remote_origin_url
       return "" unless status.zero?
 
-      repository = remote.match(%r{github\.com[:/](.+?)(\.git)})[1]
+      repository = (remote.match(%r{github\.com[:/](.+?)(\.git)}) || [])[1]
+      return "" if repository.nil?
+
       "https://github.com/#{repository}/commit/#{commit_hash}"
     end
   end
