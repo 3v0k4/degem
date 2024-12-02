@@ -19,7 +19,7 @@ module Degem
     private
 
     def gemfile_dependencies
-      @dsl.dependencies
+      @dsl.dependencies.select(&:should_include?)
     end
 
     def gemspec_dependencies

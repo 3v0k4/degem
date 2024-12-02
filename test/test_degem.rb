@@ -140,6 +140,16 @@ class TestDegem < Minitest::Test
     end
   end
 
+  def test_it_returns_the_parsed_gemfile_for_the_current_platform
+    with_gemfile do |path|
+      bundle_install(["foo"]) do
+        File.write(File.join(TEST_DIR, "app", "Gemfile"), "\ngem 'bar', platforms: [:jruby]", mode: "a")
+        actual = Degem::ParseGemfile.new.call(path)
+        assert_equal ["foo"], actual.rubygems.map(&:name)
+      end
+    end
+  end
+
   def test_it_returns_the_parsed_gemfile_including_its_gemspec
     gemspec = <<~CONTENT
       Gem::Specification.new do |spec|
