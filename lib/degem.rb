@@ -283,7 +283,7 @@ module Degem
     end
 
     def git_log(gem_name)
-      out, err, status = Open3.capture3("git log --pretty=format:'%H%x09%cs%x09%s' --pickaxe-regex -S '[\"'']#{gem_name}[\"'']' -- Gemfile | cat")
+      out, err, status = Open3.capture3("git log --pretty=format:'%H%x09%cs%x09%s' --pickaxe-regex -S '#{gem_name}' -- Gemfile | cat")
       [out, err, status.exitstatus]
     end
 
