@@ -676,4 +676,19 @@ class TestDegem < Minitest::Test
       end
     end
   end
+
+  def test_when_gemfile_does_not_exist_it_prints_an_error_and_exits_1
+    testable_cli = Class.new(Degem::Cli) do
+      def gemfile_exists?
+        false
+      end
+    end
+
+    stderr = StringIO.new
+
+    actual = testable_cli.new(stderr).call
+
+    assert_equal 1, actual
+    assert_includes stderr.string, "Gemfile not found in the current directory"
+  end
 end
