@@ -348,6 +348,9 @@ module Degem
     end
 
     def call(decorateds)
+      @stderr.puts
+      @stderr.puts
+
       decorateds.each do |decorated|
         heading =
           if decorated.source_code_uri.nil?
