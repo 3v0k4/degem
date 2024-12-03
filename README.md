@@ -1,38 +1,93 @@
 # Degem
 
-TODO: Delete this and the text below, and describe your gem
+<div align="center">
+  <img width="200" width="200" src=".github/images/degem.svg" />
+</div>
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/degem`. To experiment with that code, run `bin/console` for an interactive prompt.
+<p></p>
 
-## Installation
+Find unused gems in your bundle (ie, an app with a `Gemfile` or a gem with both a `Gemfile` and a gemspec).
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+Notice that, given the dynamic nature of Ruby, it's not possible to identify unused gems with confidence.
 
-Install the gem and add to the application's Gemfile by executing:
+**Review the reported unused gems carefully!**
 
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
-```
+## Users
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+<p>
+  <a href="https://rictionary.odone.io">
+    <img width="90" width="90" hspace="10" src=".github/images/rictionary.svg" />
+  </a>
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
-```
+  <a href="https://knapsackpro.com">
+    <img width="100" width="100" hspace="10" src=".github/images/knapsackpro.png" />
+  </a>
+</p>
 
 ## Usage
 
-TODO: Write usage instructions here
+Through the Gemfile:
+
+```bash
+bundle add degem
+bundle exec degem
+```
+
+Or just use the executable:
+
+```bash
+gem install degem
+degem
+```
+
+The final report will look something like:
+
+```
+The following gems may be unused:
+
+sqlite3: https://github.com/sparklemotion/sqlite3-ruby
+======================================================
+
+be4e37f (2024-11-15) deps: rails new to update files
+https://github.com/3v0k4/rictionary/commit/be4e37ff7caddcc2bc1d00494d155371e2b1a7e4
+9d9ea88 (2021-01-15) prep for heroku
+https://github.com/3v0k4/rictionary/commit/9d9ea882231fe809acc28985d4c280d22c31469b
+2f70e1c (2021-01-12) init
+https://github.com/3v0k4/rictionary/commit/2f70e1c5b6b1ac5b058feb10eabbc6bf76cfb332
+
+
+kamal: https://github.com/basecamp/kamal
+========================================
+
+be4e37f (2024-11-15) deps: rails new to update files
+https://github.com/3v0k4/rictionary/commit/be4e37ff7caddcc2bc1d00494d155371e2b1a7e4
+
+
+thruster: https://github.com/basecamp/thruster
+==============================================
+
+be4e37f (2024-11-15) deps: rails new to update files
+https://github.com/3v0k4/rictionary/commit/be4e37ff7caddcc2bc1d00494d155371e2b1a7e4
+
+
+debug: https://github.com/ruby/debug
+====================================
+
+be4e37f (2024-11-15) deps: rails new to update files
+https://github.com/3v0k4/rictionary/commit/be4e37ff7caddcc2bc1d00494d155371e2b1a7e4
+2f70e1c (2021-01-12) init
+https://github.com/3v0k4/rictionary/commit/2f70e1c5b6b1ac5b058feb10eabbc6bf76cfb332
+```
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install the dependencies. Then, run `bin/rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/degem.
+Bug reports and pull requests are welcome on [GitHub](https://github.com/3v0k4/degem).
 
 ## License
 
