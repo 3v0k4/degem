@@ -350,6 +350,8 @@ module Degem
     def call(decorateds)
       @stderr.puts
       @stderr.puts
+      @stderr.puts "The following gems may be unused:"
+      @stderr.puts
 
       decorateds.each do |decorated|
         heading =
