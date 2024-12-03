@@ -194,9 +194,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foobar foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foobar foo-bar bar], actual.map(&:name)
         end
       end
@@ -208,9 +208,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foobar foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foo-bar bar], actual.map(&:name)
         end
       end
@@ -222,9 +222,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foobar foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foobar foo-bar bar], actual.map(&:name)
         end
       end
@@ -236,9 +236,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foobar foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foobar foo-bar bar], actual.map(&:name)
         end
       end
@@ -250,9 +250,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[bar], actual.map(&:name)
         end
       end
@@ -264,9 +264,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
-        gem_specification = TestableGemSpecification.new(gemspec_paths)
-        actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
         assert_equal %w[foo foo-bar bar], actual.map(&:name)
       end
       end
@@ -278,9 +278,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foobar foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foo-bar bar], actual.map(&:name)
         end
       end
@@ -292,9 +292,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foobar foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foobar foo-bar bar], actual.map(&:name)
         end
       end
@@ -306,9 +306,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foobar foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foobar foo-bar bar], actual.map(&:name)
         end
       end
@@ -320,9 +320,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal ["bar"], actual.map(&:name)
         end
       end
@@ -334,9 +334,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foo-bar bar], actual.map(&:name)
         end
       end
@@ -348,9 +348,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo foobar foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foobar bar], actual.map(&:name)
         end
       end
@@ -362,9 +362,9 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo-bar bar]) do |gemspec_paths|
-        with_file(path: File.join("app", "services", "baz.rb"), content: content) do
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[bar], actual.map(&:name)
         end
       end
@@ -376,9 +376,29 @@ class TestDegem < Minitest::Test
 
     with_gemfile do |gemfile_path|
       bundle_install(%w[foo bar]) do |gemspec_paths|
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
+          assert_equal %w[bar], actual.map(&:name)
+        end
+      end
+    end
+  end
+
+  def test_when_bundle_paths_fails_it_detects_unused_gems_based_on_required_prefix_path
+    bundle_paths = Class.new(Degem::GitLsFiles) do
+      def git_ls
+        [nil, nil, 1]
+      end
+    end
+
+    content = "require 'foo/bar'".prepend(padding).concat(padding)
+
+    with_gemfile do |gemfile_path|
+      bundle_install(%w[foo bar]) do |gemspec_paths|
         with_file(path: File.join("app", "services", "baz.rb"), content: content) do
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: bundle_paths.new).call
           assert_equal %w[bar], actual.map(&:name)
         end
       end
@@ -389,7 +409,7 @@ class TestDegem < Minitest::Test
     with_gemfile do |gemfile_path|
       bundle_install(%w[rails]) do |gemspec_paths|
         gem_specification = TestableGemSpecification.new(gemspec_paths)
-        actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+        actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [] }).call
         assert_empty actual.map(&:name)
       end
     end
@@ -408,7 +428,7 @@ class TestDegem < Minitest::Test
       with_gemfile do |gemfile_path|
         bundle_install(["rails", { "foo" => railtie }]) do |gemspec_paths|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
-          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:).call
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [] }).call
           assert_empty actual.map(&:name)
         end
       end
@@ -681,7 +701,7 @@ class TestDegem < Minitest::Test
           refute_includes err, "minitest" # required in tests
           refute_includes err, "rubocop" # required in lib/myapp.rb (see above)
           assert_includes err, "favicon_factory"
-          assert_includes err, "degem"
+          refute_includes err, "degem"
         end
       end
     end

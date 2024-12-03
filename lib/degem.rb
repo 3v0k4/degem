@@ -44,16 +44,18 @@ module Degem
   class Grep
     require "find"
 
-    def call(regex, dir)
-      Find.find(dir) do |path|
-        next if path == "."
-        next Find.prune if FileTest.directory?(path) && File.basename(path).start_with?(".")
-        next Find.prune if FileTest.directory?(path) && File.basename(path) == "vendor"
+    def initialize(stderr = StringIO.new)
+      @stderr = stderr
+    end
+
+    def inverse?(matcher, dir)
+      Find.find(File.expand_path(dir)) do |path|
         next unless File.file?(path)
         next if File.extname(path) != ".rb"
 
+        @stderr.putc "."
         File.foreach(path) do |line|
-          next unless regex.match?(line)
+          next unless matcher.match?(line)
 
           return true
         end
@@ -61,26 +63,87 @@ module Degem
 
       false
     end
+
+    def inverse_many(matchers, paths)
+      Find.find(*paths) do |path|
+        next unless File.file?(path)
+
+        @stderr.putc "."
+        File.foreach(path) do |line|
+          matchers = matchers.reject do |matcher|
+            matcher.match?(line)
+          end
+        end
+      end
+
+      matchers
+    end
+  end
+
+  class GitLsFiles
+    require "open3"
+
+    def call(fallback)
+      out, _err, status = git_ls
+      return fallback unless status.zero?
+
+      out.split("\x0").select { _1.end_with?(".rb") }.map { File.expand_path(_1).to_s }
+    end
+
+    private
+
+    def git_ls
+      out, err, status = Open3.capture3("git ls-files -z")
+      [out, err, status.exitstatus]
+    end
+  end
+
+  class Matcher
+    attr_reader :rubygem
+
+    def initialize(rubygem:, matchers:)
+      @rubygem = rubygem
+      @matchers = matchers
+    end
+
+    def match?(string)
+      @matchers.any? { _1.call(@rubygem, string) }
+    end
   end
 
   class FindUnused
-    def initialize(gemfile_path:, gem_specification:, grep: Grep.new)
+    def initialize(gemfile_path:, gem_specification:, grep: Grep.new, bundle_paths: GitLsFiles.new)
       @gemfile_path = gemfile_path
       @gem_specification = gem_specification
       @grep = grep
+      @bundle_paths = bundle_paths.call(File.dirname(gemfile_path))
     end
 
     def call
-      rubygems.filter_map do |rubygem|
-        rubygem unless finders.any? { _1.call(rubygem) }
-      end
+      rubygems = gemfile.rubygems.reject { _1.name == "degem" }
+      rubygems = reject_railties(rubygems) if rails?
+      reject_used(rubygems)
     end
 
     private
 
     attr_reader :gemfile_path
 
-    def finders
+    def reject_railties(rubygems)
+      rubygems
+        .reject { _1.name == "rails" }
+        .reject do |rubygem|
+          gem_path = @gem_specification.find_by_name(rubygem.name).full_gem_path
+          @grep.inverse?(/(Rails::Railtie|Rails::Engine)/, gem_path)
+        end
+    end
+
+    def reject_used(rubygems)
+      candidates = rubygems.map { Matcher.new(rubygem: _1, matchers: matchers) }
+      @grep.inverse_many(candidates, @bundle_paths).map(&:rubygem)
+    end
+
+    def matchers
       [
         method(:based_on_top_module),
         method(:based_on_top_composite_module),
@@ -88,9 +151,7 @@ module Degem
         method(:based_on_top_composite_call),
         method(:based_on_require),
         method(:based_on_require_prefix_path),
-        method(:based_on_require_path),
-        (method(:based_on_railtie) if rails?),
-        (method(:based_on_rails) if rails?)
+        method(:based_on_require_path)
       ].compact
     end
 
@@ -102,16 +163,8 @@ module Degem
       @rails ||= gemfile.rails?
     end
 
-    def rubygems
-      @rubygems ||= gemfile.rubygems
-    end
-
-    def found?(regex, dir)
-      @grep.call(regex, dir)
-    end
-
     # gem foo -> Foo:: (but not XFoo:: or X::Foo)
-    def based_on_top_module(rubygem)
+    def based_on_top_module(rubygem, line)
       return false if rubygem.name.include?("-")
 
       regex = %r{
@@ -120,11 +173,11 @@ module Degem
         #{rubygem.name.capitalize}
         ::
       }x
-      found?(regex, File.dirname(gemfile_path))
+      regex.match?(line)
     end
 
     # gem foo-bar -> Foo::Bar (but not XFoo::Bar or X::Foo::Bar)
-    def based_on_top_composite_module(rubygem)
+    def based_on_top_composite_module(rubygem, line)
       return false unless rubygem.name.include?("-")
 
       regex = %r{
@@ -132,11 +185,11 @@ module Degem
         (?<!\w) # Do not match if \w before
         #{rubygem.name.split("-").map(&:capitalize).join("::")}
       }x
-      found?(regex, File.dirname(gemfile_path))
+      regex.match?(line)
     end
 
     # gem foo -> Foo. (but not X::Foo. or XBar.)
-    def based_on_top_call(rubygem)
+    def based_on_top_call(rubygem, line)
       return false if rubygem.name.include?("-")
 
       regex = %r{
@@ -145,11 +198,11 @@ module Degem
         #{rubygem.name.capitalize}
         \.
       }x
-      found?(regex, File.dirname(gemfile_path))
+      regex.match?(line)
     end
 
     # gem foo-bar -> FooBar. (but not X::FooBar. or XFooBar.)
-    def based_on_top_composite_call(rubygem)
+    def based_on_top_composite_call(rubygem, line)
       return false unless rubygem.name.include?("-")
 
       regex = %r{
@@ -158,11 +211,11 @@ module Degem
         #{rubygem.name.split("-").map(&:capitalize).join("")}
         \.
       }x
-      found?(regex, File.dirname(gemfile_path))
+      regex.match?(line)
     end
 
     # gem foo-bar -> require 'foo-bar'
-    def based_on_require(rubygem)
+    def based_on_require(rubygem, line)
       regex = %r{
         ^
         \s*
@@ -172,11 +225,11 @@ module Degem
         #{rubygem.name}
         ['"]
       }x
-      found?(regex, File.dirname(gemfile_path))
+      regex.match?(line)
     end
 
     # gem foo-bar -> require 'foo/bar'
-    def based_on_require_path(rubygem)
+    def based_on_require_path(rubygem, line)
       return false unless rubygem.name.include?("-")
 
       regex = %r{
@@ -188,11 +241,11 @@ module Degem
         #{rubygem.name.gsub("-", "\/")} # match foo/bar when rubygem is foo-bar
         ['"]
       }x
-      found?(regex, File.dirname(gemfile_path))
+      regex.match?(line)
     end
 
     # gem foo -> require 'foo/'
-    def based_on_require_prefix_path(rubygem)
+    def based_on_require_prefix_path(rubygem, line)
       return false if rubygem.name.include?("-")
 
       regex = %r{
@@ -204,16 +257,7 @@ module Degem
         #{rubygem.name}
         /
       }x
-      found?(regex, File.dirname(gemfile_path))
-    end
-
-    def based_on_railtie(rubygem)
-      gem_path = @gem_specification.find_by_name(rubygem.name).full_gem_path
-      found?(/(Rails::Railtie|Rails::Engine)/, gem_path)
-    end
-
-    def based_on_rails(rubygem)
-      ["rails"].include?(rubygem.name)
+      regex.match?(line)
     end
   end
 
@@ -344,7 +388,7 @@ module Degem
       end
 
       rubygems = FindUnused
-        .new(gemfile_path: GEMFILE, gem_specification: Gem::Specification)
+        .new(gemfile_path: GEMFILE, gem_specification: Gem::Specification, grep: Grep.new(@stderr))
         .call
       decorated = Decorate
         .new(gem_specification: Gem::Specification)
