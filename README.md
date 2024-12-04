@@ -6,7 +6,7 @@
 
 <p></p>
 
-Find unused gems in your bundle (ie, an app with a `Gemfile` or a gem with both a `Gemfile` and a gemspec).
+Find unused gems in the Ruby bundle (ie, an app with a `Gemfile` or a gem with both a `Gemfile` and a gemspec).
 
 Notice that, given the dynamic nature of Ruby, it's not possible to identify unused gems with confidence.
 

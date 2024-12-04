@@ -684,18 +684,20 @@ class TestDegem < Minitest::Test
 
     Bundler.with_unbundled_env do
       Dir.chdir(GEM_DIR) do
-        Open3.capture3("bundle gem myapp") unless skip
+        Open3.capture3("bundle gem myapp --test=minitest") unless skip
 
         Dir.chdir(File.join(GEM_DIR, "myapp")) do
           Open3.capture3("bundle config set --local path vendor") unless skip
           Open3.capture3("bundle install") unless skip
+          Open3.capture3("git config --global user.email 'email@example.com'")
+          Open3.capture3("git config --global user.name 'name'")
           Open3.capture3("git commit --all -m 'init'") unless skip
           Open3.capture3("bundle add favicon_factory") unless skip
           Open3.capture3("git commit --all -m 'add favicon_factory'") unless skip
           Open3.capture3("bundle add --path '../../..' degem") unless skip
           Open3.capture3('echo \'require "rubocop"\' >> lib/myapp.rb') unless skip
 
-          out, err, status = Open3.capture3("bundle exec degem Gemfile")
+          _out, err, status = Open3.capture3("bundle exec degem Gemfile")
 
           assert_equal 0, status.exitstatus
           refute_includes err, "myapp" # required in tests
