@@ -98,7 +98,7 @@ module Degem
       regex = %r{
         (?<!\w::) # Do not match if :: before
         (?<!\w) # Do not match if \w before
-        #{rubygem.name.split("-").map(&:capitalize).join("")}
+        #{rubygem.name.split("-").map(&:capitalize).join}
         \.
       }x
       regex.match?(line)
@@ -128,7 +128,7 @@ module Degem
         require
         \s+
         ['"]
-        #{rubygem.name.gsub("-", "\/")} # match foo/bar when rubygem is foo-bar
+        #{rubygem.name.tr("-", "/")} # match foo/bar when rubygem is foo-bar
         ['"]
       }x
       regex.match?(line)

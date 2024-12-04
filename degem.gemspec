@@ -9,7 +9,10 @@ Gem::Specification.new do |spec|
   spec.email = ["riccardo.odone@gmail.com"]
 
   spec.summary = "Find unused gems in the Ruby bundle"
-  spec.description = "Degem finds unused gems in the Ruby bundle (ie, an app with a `Gemfile` or a gem with both a `Gemfile` and a gemspec)."
+  spec.description = [
+    "Degem finds unused gems in the Ruby bundle",
+    "(ie, an app with a `Gemfile` or a gem with both a `Gemfile` and a gemspec)."
+  ].join(" ")
   spec.homepage = "https://github.com/3v0k4/degem"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1.0"
