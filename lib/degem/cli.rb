@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Degem
   class Cli
     GEMFILE = "Gemfile"
@@ -16,17 +18,28 @@ module Degem
         return 1
       end
 
-      rubygems = FindUnused
-        .new(gemfile_path: GEMFILE, gem_specification: Gem::Specification, grep: Grep.new(@stderr))
-        .call
-      decorated = Decorate
-        .new(gem_specification: Gem::Specification)
-        .call(rubygems:, git_adapter: GitAdapter.new)
+      unused = find_unused.call
+      decorated = decorate_rubygems.call(unused)
       Report.new(@stderr).call(decorated)
       0
     end
 
     private
+
+    def find_unused
+      FindUnused.new(
+        gemfile_path: GEMFILE,
+        gem_specification: Gem::Specification,
+        grep: Grep.new(@stderr)
+      )
+    end
+
+    def decorate_rubygems
+      DecorateRubygems.new(
+        gem_specification: Gem::Specification,
+        git_adapter: GitAdapter.new
+      )
+    end
 
     def gemfile_exists?
       File.file?(GEMFILE)

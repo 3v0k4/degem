@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Degem
   class ParseGemfile
     def call(gemfile_path)

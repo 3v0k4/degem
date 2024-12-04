@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Degem
   class FindUnused
     def initialize(gemfile_path:, gem_specification:, grep: Grep.new, bundle_paths: GitLsFiles.new)
@@ -22,7 +24,7 @@ module Degem
         .reject { _1.name == "rails" }
         .reject do |rubygem|
           gem_path = @gem_specification.find_by_name(rubygem.name).full_gem_path
-          @grep.inverse?(/(Rails::Railtie|Rails::Engine)/, gem_path)
+          @grep.match?(/(Rails::Railtie|Rails::Engine)/, gem_path)
         end
     end
 
@@ -44,7 +46,7 @@ module Degem
     end
 
     def gemfile
-      @gemfile = ParseGemfile.new.call(gemfile_path)
+      @gemfile ||= ParseGemfile.new.call(gemfile_path)
     end
 
     def rails?

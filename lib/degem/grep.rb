@@ -1,12 +1,14 @@
+# frozen_string_literal: true
+
+require "find"
+
 module Degem
   class Grep
-    require "find"
-
     def initialize(stderr = StringIO.new)
       @stderr = stderr
     end
 
-    def inverse?(matcher, dir)
+    def match?(matcher, dir)
       Find.find(File.expand_path(dir)) do |path|
         next unless File.file?(path)
         next if File.extname(path) != ".rb"

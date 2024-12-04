@@ -1,12 +1,14 @@
+# frozen_string_literal: true
+
+require "open3"
+
 module Degem
   class GitLsFiles
-    require "open3"
-
     def call(fallback)
       out, _err, status = git_ls
       return fallback unless status.zero?
 
-      out.split("\x0").select { _1.end_with?(".rb") }.map { File.expand_path(_1).to_s }
+      out.split("\x0").select { _1.end_with?(".rb") }.map { File.expand_path(_1) }
     end
 
     private

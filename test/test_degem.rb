@@ -460,7 +460,7 @@ class TestDegem < Minitest::Test
 
       gem_specification = TestableGemSpecification.new(foo_gemspec_path)
 
-      decorateds = Degem::Decorate.new(gem_specification:).call(rubygems:, git_adapter:)
+      decorateds = Degem::DecorateRubygems.new(gem_specification:, git_adapter:).call(rubygems)
 
       assert_equal ["foo"], decorateds.map(&:name)
       assert_equal [[true]], decorateds.map(&:autorequire)
@@ -495,7 +495,7 @@ class TestDegem < Minitest::Test
       git_adapter = TestableGitAdapter.new
       gem_specification = TestableGemSpecification.new(foo_gemspec_path)
 
-      actual = Degem::Decorate.new(gem_specification:).call(rubygems:, git_adapter:)
+      actual = Degem::DecorateRubygems.new(gem_specification:, git_adapter:).call(rubygems)
 
       assert_equal ["foo"], actual.map(&:name)
       assert_equal [nil], actual.map(&:autorequire)
@@ -548,7 +548,7 @@ class TestDegem < Minitest::Test
 
         gem_specification = TestableGemSpecification.new([foo_gemspec_path, bar_gemspec_path])
 
-        decorated = Degem::Decorate.new(gem_specification:).call(rubygems:, git_adapter:)
+        decorated = Degem::DecorateRubygems.new(gem_specification:, git_adapter:).call(rubygems)
 
         stderr = StringIO.new
         Degem::Report.new(stderr).call(decorated)

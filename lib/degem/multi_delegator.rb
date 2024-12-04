@@ -1,12 +1,14 @@
+# frozen_string_literal: true
+
 module Degem
   class MultiDelegator
     def initialize(*delegates)
       @delegates = delegates
     end
 
-    def method_missing(method, *args, &block)
+    def method_missing(method, *args)
       delegate = @delegates.find { _1.respond_to?(method) }
-      return delegate.public_send(method, *args, &block) if delegate
+      return delegate.public_send(method, *args) if delegate
 
       super
     end
