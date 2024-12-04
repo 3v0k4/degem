@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
-  spec.metadata["changelog_uri"] = "https://github.com/3v0k4/favicon_factory/blob/main/CHANGELOG.md"
+  spec.metadata["changelog_uri"] = "https://github.com/3v0k4/degem/blob/main/CHANGELOG.md"
 
   spec.files = Dir.glob("lib/**/*") + Dir.glob("exe/*")
   spec.bindir = "exe"
