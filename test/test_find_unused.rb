@@ -98,6 +98,48 @@ class TestFindUnused < Minitest::Test
     end
   end
 
+  def test_it_detects_unused_gems_based_on_the_top_module_7
+    content = "FooBar::Baz".prepend(padding).concat(padding)
+
+    with_gemfile do |gemfile_path|
+      bundle_install(%w[foo foobar foo-bar foo_bar bar]) do |gemspec_paths|
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
+          assert_equal %w[foo foobar foo-bar bar], actual.map(&:name)
+        end
+      end
+    end
+  end
+
+  def test_it_detects_unused_gems_based_on_the_top_module_8
+    content = "XFooBar::Baz".prepend(padding).concat(padding)
+
+    with_gemfile do |gemfile_path|
+      bundle_install(%w[foo foobar foo-bar foo_bar bar]) do |gemspec_paths|
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
+          assert_equal %w[foo foobar foo-bar foo_bar bar], actual.map(&:name)
+        end
+      end
+    end
+  end
+
+  def test_it_detects_unused_gems_based_on_the_top_module_9
+    content = "X::FooBar::Baz".prepend(padding).concat(padding)
+
+    with_gemfile do |gemfile_path|
+      bundle_install(%w[foo foobar foo-bar foo_bar bar]) do |gemspec_paths|
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
+          assert_equal %w[foo foobar foo-bar foo_bar bar], actual.map(&:name)
+        end
+      end
+    end
+  end
+
   def test_it_detects_unused_gems_based_on_the_top_call_1
     content = "Foobar.new.call".prepend(padding).concat(padding)
 
@@ -163,6 +205,48 @@ class TestFindUnused < Minitest::Test
           gem_specification = TestableGemSpecification.new(gemspec_paths)
           actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
           assert_equal %w[foo foo-bar bar], actual.map(&:name)
+        end
+      end
+    end
+  end
+
+  def test_it_detects_unused_gems_based_on_the_top_call_6
+    content = "FooBar.baz".prepend(padding).concat(padding)
+
+    with_gemfile do |gemfile_path|
+      bundle_install(%w[foo foobar foo-bar foo_bar bar]) do |gemspec_paths|
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
+          assert_equal %w[foo foobar bar], actual.map(&:name)
+        end
+      end
+    end
+  end
+
+  def test_it_detects_unused_gems_based_on_the_top_call_7
+    content = "XFooBar.baz".prepend(padding).concat(padding)
+
+    with_gemfile do |gemfile_path|
+      bundle_install(%w[foo foobar foo-bar foo_bar bar]) do |gemspec_paths|
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
+          assert_equal %w[foo foobar foo-bar foo_bar bar], actual.map(&:name)
+        end
+      end
+    end
+  end
+
+  def test_it_detects_unused_gems_based_on_the_top_call_8
+    content = "X::FooBar.baz".prepend(padding).concat(padding)
+
+    with_gemfile do |gemfile_path|
+      bundle_install(%w[foo foobar foo-bar foo_bar bar]) do |gemspec_paths|
+        with_file(path: File.join("app", "services", "baz.rb"), content: content) do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
+          assert_equal %w[foo foobar foo-bar foo_bar bar], actual.map(&:name)
         end
       end
     end

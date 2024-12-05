@@ -36,9 +36,11 @@ module Degem
     def matchers
       [
         method(:based_on_top_module),
-        method(:based_on_top_composite_module),
+        method(:based_on_top_composite_module_dash),
+        method(:based_on_top_composite_module_underscore),
         method(:based_on_top_call),
-        method(:based_on_top_composite_call),
+        method(:based_on_top_composite_call_dash),
+        method(:based_on_top_composite_call_underscore),
         method(:based_on_require),
         method(:based_on_require_prefix_path),
         method(:based_on_require_path)
@@ -66,8 +68,21 @@ module Degem
       regex.match?(line)
     end
 
+    # gem foo_bar -> FooBar (but not XFooBar or X::FooBar)
+    def based_on_top_composite_module_underscore(rubygem, line)
+      return false unless rubygem.name.include?("_")
+
+      regex = %r{
+        (?<!\w::) # Do not match if :: before
+        (?<!\w) # Do not match if \w before
+        #{rubygem.name.split("_").map(&:capitalize).join}
+        ::
+      }x
+      regex.match?(line)
+    end
+
     # gem foo-bar -> Foo::Bar (but not XFoo::Bar or X::Foo::Bar)
-    def based_on_top_composite_module(rubygem, line)
+    def based_on_top_composite_module_dash(rubygem, line)
       return false unless rubygem.name.include?("-")
 
       regex = %r{
@@ -92,13 +107,26 @@ module Degem
     end
 
     # gem foo-bar -> FooBar. (but not X::FooBar. or XFooBar.)
-    def based_on_top_composite_call(rubygem, line)
+    def based_on_top_composite_call_dash(rubygem, line)
       return false unless rubygem.name.include?("-")
 
       regex = %r{
         (?<!\w::) # Do not match if :: before
         (?<!\w) # Do not match if \w before
         #{rubygem.name.split("-").map(&:capitalize).join}
+        \.
+      }x
+      regex.match?(line)
+    end
+
+    # gem foo_bar -> FooBar. (but not X::FooBar. or XFooBar.)
+    def based_on_top_composite_call_underscore(rubygem, line)
+      return false unless rubygem.name.include?("_")
+
+      regex = %r{
+        (?<!\w::) # Do not match if :: before
+        (?<!\w) # Do not match if \w before
+        #{rubygem.name.split("_").map(&:capitalize).join}
         \.
       }x
       regex.match?(line)
