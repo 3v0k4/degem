@@ -23,13 +23,41 @@ module Degem
     end
 
     def git_log(gem_name)
+      out1, err1, status1 = git_log_gemfile(gem_name)
+      out2, err2, status2 = git_log_gemspec(gem_name)
+
+      [
+        [out1.to_s, out2.to_s].join,
+        [err1.to_s, err2.to_s].join,
+        (status1 + status2) < 2 ? 0 : 1
+      ]
+    end
+
+    def git_log_gemfile(gem_name)
       out, err, status = Open3.capture3([
         "git log",
         "--pretty=format:'%H%x09%cs%x09%s'",
         "--pickaxe-regex",
-        "-S '#{gem_name}'",
+        "--follow",
+        "-S \"gem\\s*['\\\"]#{gem_name}['\\\"]\"",
         "--",
         "Gemfile",
+        "|",
+        "cat"
+      ].join(" "))
+
+      [out, err, status.exitstatus]
+    end
+
+    def git_log_gemspec(gem_name)
+      out, err, status = Open3.capture3([
+        "git log",
+        "--pretty=format:'%H%x09%cs%x09%s'",
+        "--pickaxe-regex",
+        "--follow",
+        "-S \"spec\\.add_(development_)?dependency\\s*['\\\"]#{gem_name}['\\\"]\"",
+        "--",
+        "*.gemspec",
         "|",
         "cat"
       ].join(" "))
