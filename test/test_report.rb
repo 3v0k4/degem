@@ -10,40 +10,6 @@ class TestReport < Minitest::Test
     FileUtils.rm_rf(TEST_DIR)
   end
 
-  class TestableGitAdapter < Degem::GitAdapter
-    require "ostruct"
-
-    def initialize(origin_url = nil)
-      @origin_url = origin_url
-      @map = {}
-    end
-
-    def add_commit(gem_name, commit)
-      @map[gem_name] ||= []
-      @map[gem_name] += [OpenStruct.new(commit)]
-    end
-
-    private
-
-    def git_remote_origin_url
-      [@origin_url, nil, 0]
-    end
-
-    def git_log(gem_name)
-      return [nil, nil, 1] unless @map.key?(gem_name)
-
-      out = @map.fetch(gem_name).map do |commit|
-        [commit.hash, commit.date, commit.title].join("\t")
-      end.join("\n")
-
-      [out, nil, 0]
-    end
-  end
-
-  def padding
-    ["", " "].sample
-  end
-
   def test_it_reports_with_git_information
     foo_gemspec = <<~CONTENT
       Gem::Specification.new do |spec|
