@@ -26,18 +26,9 @@ Notice that, given the dynamic nature of Ruby, it's not possible to identify unu
 
 ## Usage
 
-Through the Gemfile:
-
 ```bash
 bundle add degem
 bundle exec degem
-```
-
-Or just use the executable:
-
-```bash
-gem install degem
-degem
 ```
 
 The final report will look something like:
