@@ -42,6 +42,7 @@ class TestParseGemfile < Minitest::Test
         spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
         spec.authors = ["Riccardo Odone"]
         spec.add_dependency "baz", "~> 1.0"
+        spec.add_development_dependency "foobar", "~> 1.0"
       end
     CONTENT
 
@@ -50,7 +51,7 @@ class TestParseGemfile < Minitest::Test
         File.write(gemfile_path, "\ngemspec", mode: "a")
         with_file(path: File.join("app", "bar.gemspec"), content: gemspec) do
           actual = Degem::ParseGemfile.new.call(gemfile_path)
-          assert_array %w[foo bar baz], actual.rubygems.map(&:name)
+          assert_array %w[foo bar baz foobar], actual.rubygems.map(&:name)
         end
       end
     end

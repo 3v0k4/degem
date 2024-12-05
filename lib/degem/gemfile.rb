@@ -7,7 +7,7 @@ module Degem
     end
 
     def rubygems
-      @rubygems ||= gemfile_dependencies + gemspec_dependencies
+      @rubygems ||= (gemfile_dependencies + gemspec_dependencies).uniq
     end
 
     def rails?
