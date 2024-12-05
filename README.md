@@ -6,9 +6,11 @@
 
 <p></p>
 
-Find unused gems in the Ruby bundle (ie, an app with a `Gemfile` or a gem with both a `Gemfile` and a gemspec).
+Find unused gems in a Ruby bundle (ie, an app with a `Gemfile` or a gem with both a `Gemfile` and a gemspec).
 
 Notice that, given the dynamic nature of Ruby, it's not possible to identify unused gems with confidence.
+
+With the current heuristics, many false positives are reported. But we can [make it better](https://github.com/3v0k4/degem/issues).
 
 **Review the reported unused gems carefully!**
 
