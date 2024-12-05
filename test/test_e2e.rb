@@ -24,8 +24,8 @@ class TestE2e < Minitest::Test
         Dir.chdir(File.join(GEM_DIR, "myapp")) do
           Open3.capture3("bundle config set --local path vendor") unless skip
           Open3.capture3("bundle install") unless skip
-          Open3.capture3("git config --global user.email 'email@example.com'")
-          Open3.capture3("git config --global user.name 'name'")
+          Open3.capture3("git config --local user.email 'email@example.com'")
+          Open3.capture3("git config --local user.name 'name'")
           Open3.capture3("git commit --all -m 'init'") unless skip
           Open3.capture3("bundle add favicon_factory") unless skip
           Open3.capture3("git commit --all -m 'add favicon_factory'") unless skip
