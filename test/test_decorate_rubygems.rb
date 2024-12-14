@@ -1,15 +1,6 @@
 require "test_helper"
 
-class TestDecorateRubygems < Minitest::Test
-  def setup
-    FileUtils.rm_rf(TEST_DIR)
-    FileUtils.mkdir_p(TEST_DIR)
-  end
-
-  def teardown
-    FileUtils.rm_rf(TEST_DIR)
-  end
-
+class TestDecorateUnusedGems < Minitest::Test
   def test_it_decorates_the_result_with_git_information
     gemspec = <<~CONTENT
       Gem::Specification.new do |spec|
@@ -35,7 +26,7 @@ class TestDecorateRubygems < Minitest::Test
 
       gem_specification = TestableGemSpecification.new(foo_gemspec_path)
 
-      decorateds = Degem::DecorateRubygems.new(gem_specification:, git_adapter:).call(rubygems)
+      decorateds = Degem::DecorateUnusedGems.new(gem_specification:, git_adapter:).call(rubygems)
 
       assert_equal ["foo"], decorateds.map(&:name)
       assert_equal [[true]], decorateds.map(&:autorequire)
@@ -70,7 +61,7 @@ class TestDecorateRubygems < Minitest::Test
       git_adapter = TestableGitAdapter.new
       gem_specification = TestableGemSpecification.new(foo_gemspec_path)
 
-      actual = Degem::DecorateRubygems.new(gem_specification:, git_adapter:).call(rubygems)
+      actual = Degem::DecorateUnusedGems.new(gem_specification:, git_adapter:).call(rubygems)
 
       assert_equal ["foo"], actual.map(&:name)
       assert_equal [nil], actual.map(&:autorequire)

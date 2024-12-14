@@ -9,33 +9,29 @@ module Degem
     end
 
     def initialize(stderr)
-      @stderr = stderr
+      Degem.stderr = stderr
     end
 
     def call
       unless gemfile_exists?
-        @stderr.puts "Gemfile not found in the current directory"
+        Degem.stderr.puts "Gemfile not found in the current directory"
         return 1
       end
 
       unused = find_unused.call
       decorated = decorate_rubygems.call(unused)
-      Report.new(@stderr).call(decorated)
+      Report.new.call(decorated)
       0
     end
 
     private
 
     def find_unused
-      FindUnused.new(
-        gemfile_path: GEMFILE,
-        gem_specification: Gem::Specification,
-        grep: Grep.new(@stderr)
-      )
+      FindUnused.new(gemfile_path: GEMFILE)
     end
 
     def decorate_rubygems
-      DecorateRubygems.new(
+      DecorateUnusedGems.new(
         gem_specification: Gem::Specification,
         git_adapter: GitAdapter.new
       )

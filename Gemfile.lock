@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     degem (0.1.0)
+      prism (~> 1.2)
 
 GEM
   remote: https://rubygems.org/
@@ -21,6 +22,7 @@ GEM
     parser (3.3.6.0)
       ast (~> 2.4.1)
       racc
+    prism (1.2.0)
     psych (5.2.0)
       stringio
     racc (1.8.1)

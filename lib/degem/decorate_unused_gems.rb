@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Degem
-  class DecorateRubygems
+  class DecorateUnusedGems
     def initialize(gem_specification:, git_adapter:)
       @gem_specification = gem_specification
       @git_adapter = git_adapter
@@ -11,7 +11,7 @@ module Degem
       rubygems.map do |rubygem|
         gemspec = @gem_specification.find_by_name(rubygem.name)
         git = @git_adapter.call(rubygem.name)
-        Rubygem.new(rubygem, gemspec, git)
+        UnusedGem.new(rubygem, gemspec, git)
       end
     end
   end

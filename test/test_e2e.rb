@@ -1,15 +1,6 @@
 require "test_helper"
 
 class TestE2e < Minitest::Test
-  def setup
-    FileUtils.rm_rf(TEST_DIR)
-    FileUtils.mkdir_p(TEST_DIR)
-  end
-
-  def teardown
-    FileUtils.rm_rf(TEST_DIR)
-  end
-
   def test_e2e__it_prints_unused_gems
     require "open3"
 
