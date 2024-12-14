@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Degem
-  class Rubygem < MultiDelegator
+  class UnusedGem < MultiDelegator
     attr_reader :commits
 
     def initialize(_, _, commits)

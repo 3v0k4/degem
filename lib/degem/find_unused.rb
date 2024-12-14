@@ -2,11 +2,11 @@
 
 module Degem
   class FindUnused
-    def initialize(gemfile_path:, gem_specification:, grep: Grep.new, bundle_paths: GitLsFiles.new)
+    def initialize(gemfile_path:, gem_specification: Gem::Specification, bundle_paths: GitLsFiles.new)
       @gemfile_path = gemfile_path
       @gem_specification = gem_specification
-      @grep = grep
-      @bundle_paths = bundle_paths.call(File.dirname(gemfile_path))
+      fallback = Dir.glob(File.join(File.dirname(gemfile_path), "**/*.rb"))
+      @bundle_paths = bundle_paths.call(fallback)
     end
 
     def call
@@ -22,160 +22,40 @@ module Degem
     def reject_railties(rubygems)
       rubygems
         .reject { _1.name == "rails" }
-        .reject do |rubygem|
-          gem_path = @gem_specification.find_by_name(rubygem.name).full_gem_path
-          @grep.match?(/(Rails::Railtie|Rails::Engine)/, gem_path)
-        end
+        .reject { _1.consts.grep(/Rails::Railtie|Rails::Engine/).any? }
     end
 
     def reject_used(rubygems)
-      candidates = rubygems.map { Matcher.new(rubygem: _1, matchers: matchers) }
-      @grep.inverse_many(candidates, @bundle_paths).map(&:rubygem)
+      bundle = ParseRuby.new.call(@bundle_paths)
+      rubygems = reject_required(rubygems, bundle.requires)
+      reject_consts(rubygems, bundle.consts)
     end
 
-    def matchers
-      [
-        method(:based_on_top_module),
-        method(:based_on_top_composite_module_dash),
-        method(:based_on_top_composite_module_underscore),
-        method(:based_on_top_call),
-        method(:based_on_top_composite_call_dash),
-        method(:based_on_top_composite_call_underscore),
-        method(:based_on_require),
-        method(:based_on_require_prefix_path),
-        method(:based_on_require_path)
-      ].compact
+    def reject_consts(rubygems, bundle_consts)
+      rubygems.reject do |rubygem|
+        rubygem.own_consts.any? do |own_const|
+          bundle_consts.include?(own_const)
+        end
+      end
+    end
+
+    def reject_required(rubygems, bundle_requires)
+      rubygems.reject do |rubygem|
+        bundle_requires.any? do |bundle_require|
+          next true if bundle_require == rubygem.name
+          next true if bundle_require == rubygem.name.tr("-", "/")
+
+          bundle_require.start_with?("#{rubygem.name}/")
+        end
+      end
     end
 
     def gemfile
-      @gemfile ||= ParseGemfile.new.call(gemfile_path)
+      @gemfile ||= ParseGemfile.new(@gem_specification).call(gemfile_path)
     end
 
     def rails?
       @rails ||= gemfile.rails?
-    end
-
-    # gem foo -> Foo:: (but not XFoo:: or X::Foo)
-    def based_on_top_module(rubygem, line)
-      return false if rubygem.name.include?("-")
-
-      regex = %r{
-        (?<!\w::) # Do not match if :: before
-        (?<!\w) # Do not match if \w before
-        #{rubygem.name.capitalize}
-        ::
-      }x
-      regex.match?(line)
-    end
-
-    # gem foo_bar -> FooBar (but not XFooBar or X::FooBar)
-    def based_on_top_composite_module_underscore(rubygem, line)
-      return false unless rubygem.name.include?("_")
-
-      regex = %r{
-        (?<!\w::) # Do not match if :: before
-        (?<!\w) # Do not match if \w before
-        #{rubygem.name.split("_").map(&:capitalize).join}
-        ::
-      }x
-      regex.match?(line)
-    end
-
-    # gem foo-bar -> Foo::Bar (but not XFoo::Bar or X::Foo::Bar)
-    def based_on_top_composite_module_dash(rubygem, line)
-      return false unless rubygem.name.include?("-")
-
-      regex = %r{
-        (?<!\w::) # Do not match if :: before
-        (?<!\w) # Do not match if \w before
-        #{rubygem.name.split("-").map(&:capitalize).join("::")}
-      }x
-      regex.match?(line)
-    end
-
-    # gem foo -> Foo. (but not X::Foo. or XBar.)
-    def based_on_top_call(rubygem, line)
-      return false if rubygem.name.include?("-")
-
-      regex = %r{
-        (?<!\w::) # Do not match if :: before
-        (?<!\w) # Do not match if \w before
-        #{rubygem.name.capitalize}
-        \.
-      }x
-      regex.match?(line)
-    end
-
-    # gem foo-bar -> FooBar. (but not X::FooBar. or XFooBar.)
-    def based_on_top_composite_call_dash(rubygem, line)
-      return false unless rubygem.name.include?("-")
-
-      regex = %r{
-        (?<!\w::) # Do not match if :: before
-        (?<!\w) # Do not match if \w before
-        #{rubygem.name.split("-").map(&:capitalize).join}
-        \.
-      }x
-      regex.match?(line)
-    end
-
-    # gem foo_bar -> FooBar. (but not X::FooBar. or XFooBar.)
-    def based_on_top_composite_call_underscore(rubygem, line)
-      return false unless rubygem.name.include?("_")
-
-      regex = %r{
-        (?<!\w::) # Do not match if :: before
-        (?<!\w) # Do not match if \w before
-        #{rubygem.name.split("_").map(&:capitalize).join}
-        \.
-      }x
-      regex.match?(line)
-    end
-
-    # gem foo-bar -> require 'foo-bar'
-    def based_on_require(rubygem, line)
-      regex = %r{
-        ^
-        \s*
-        require
-        \s+
-        ['"]
-        #{rubygem.name}
-        ['"]
-      }x
-      regex.match?(line)
-    end
-
-    # gem foo-bar -> require 'foo/bar'
-    def based_on_require_path(rubygem, line)
-      return false unless rubygem.name.include?("-")
-
-      regex = %r{
-        ^
-        \s*
-        require
-        \s+
-        ['"]
-        #{rubygem.name.tr("-", "/")} # match foo/bar when rubygem is foo-bar
-        ['"]
-      }x
-      regex.match?(line)
-    end
-
-    # gem foo -> require 'foo/'
-    def based_on_require_prefix_path(rubygem, line)
-      return false if rubygem.name.include?("-")
-
-      regex = %r{
-        ^
-        \s*
-        require
-        \s+
-        ['"]
-        #{rubygem.name}
-        /
-      }x
-      regex.match?(line)
     end
   end
 end

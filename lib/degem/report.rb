@@ -2,21 +2,17 @@
 
 module Degem
   class Report
-    def initialize(stderr)
-      @stderr = stderr
-    end
-
     def call(rubygems)
-      @stderr.puts
-      @stderr.puts
-      @stderr.puts "The following gems may be unused (#{rubygems.size}):"
-      @stderr.puts
+      Degem.stderr.puts
+      Degem.stderr.puts
+      Degem.stderr.puts "The following gems may be unused (#{rubygems.size}):"
+      Degem.stderr.puts
 
       rubygems.each do |rubygem|
         gem_name(rubygem)
-        @stderr.puts
+        Degem.stderr.puts
         commits(rubygem)
-        @stderr.puts
+        Degem.stderr.puts
       end
     end
 
@@ -30,15 +26,15 @@ module Degem
           "#{rubygem.name}: #{rubygem.source_code_uri}"
         end
 
-      @stderr.puts(heading)
-      @stderr.puts("=" * heading.size)
+      Degem.stderr.puts(heading)
+      Degem.stderr.puts("=" * heading.size)
     end
 
     def commits(rubygem)
       rubygem.commits.each.with_index do |commit, i|
-        @stderr.puts("#{commit.hash[0..6]} (#{commit.date}) #{commit.title}")
-        @stderr.puts(commit.url)
-        @stderr.puts if i + 1 == rubygem.commits.size
+        Degem.stderr.puts("#{commit.hash[0..6]} (#{commit.date}) #{commit.title}")
+        Degem.stderr.puts(commit.url)
+        Degem.stderr.puts if i + 1 == rubygem.commits.size
       end
     end
   end

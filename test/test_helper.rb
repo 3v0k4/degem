@@ -4,21 +4,26 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "degem"
 
 require "minitest/autorun"
+require "securerandom"
 
 TEST_DIR = File.join(Dir.pwd, "tmp", "test")
 GEM_DIR = File.join(Dir.pwd, "tmp", "gem")
 
-def with_file(path:, content:)
-  path = File.join(TEST_DIR, path)
-  dir = File.dirname(path)
+def random_string
+  SecureRandom.uuid
+end
+
+def with_file(content:, path: random_string)
+  test_path = File.join(TEST_DIR, path)
+  dir = File.dirname(test_path)
   FileUtils.mkdir_p(dir)
-  file = File.new(path, "w")
+  file = File.new(test_path, "w")
   file.write(content)
   file.rewind
   yield(file.path)
 ensure
   file.close
-  FileUtils.rm_rf(dir)
+  FileUtils.rm_rf(File.join(TEST_DIR, path.split(File::SEPARATOR).first))
 end
 
 def with_gemfile(&)
@@ -112,4 +117,8 @@ class TestableGitAdapter < Degem::GitAdapter
 
     [out, nil, 0]
   end
+end
+
+def assert_array(xs, ys, msg = nil)
+  assert_equal xs.sort, ys.sort, msg
 end

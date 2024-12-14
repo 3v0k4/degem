@@ -1,15 +1,6 @@
 require "test_helper"
 
 class TestGitAdapter < Minitest::Test
-  def setup
-    FileUtils.rm_rf(TEST_DIR)
-    FileUtils.mkdir_p(TEST_DIR)
-  end
-
-  def teardown
-    FileUtils.rm_rf(TEST_DIR)
-  end
-
   def test_it_returns_parsed_commits
     testable_git_adapter = Class.new(Degem::GitAdapter) do
       def git_remote_origin_url

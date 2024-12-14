@@ -2,12 +2,12 @@ require "test_helper"
 
 class TestReport < Minitest::Test
   def setup
-    FileUtils.rm_rf(TEST_DIR)
-    FileUtils.mkdir_p(TEST_DIR)
+    @original_stderr = Degem.stderr
+    Degem.stderr = StringIO.new
   end
 
   def teardown
-    FileUtils.rm_rf(TEST_DIR)
+    Degem.stderr = @original_stderr
   end
 
   def test_it_reports_with_git_information
@@ -54,23 +54,22 @@ class TestReport < Minitest::Test
 
         gem_specification = TestableGemSpecification.new([foo_gemspec_path, bar_gemspec_path])
 
-        decorated = Degem::DecorateRubygems.new(gem_specification:, git_adapter:).call(rubygems)
+        decorated = Degem::DecorateUnusedGems.new(gem_specification:, git_adapter:).call(rubygems)
 
-        stderr = StringIO.new
-        Degem::Report.new(stderr).call(decorated)
+        Degem::Report.new.call(decorated)
 
-        assert_includes stderr.string, "The following gems may be unused (2):\n\n"
+        assert_includes Degem.stderr.string, "The following gems may be unused (2):\n\n"
 
-        assert_includes stderr.string, "foo: https://github.com/3v0k4/foo\n"
-        assert_includes stderr.string, "=================================\n\n"
+        assert_includes Degem.stderr.string, "foo: https://github.com/3v0k4/foo\n"
+        assert_includes Degem.stderr.string, "=================================\n\n"
 
-        assert_includes stderr.string, "afb7796 (2020-01-12) initial commit\n"
-        assert_includes stderr.string, "https://github.com/3v0k4/foo/commit/afb779653f324eb1c6b486c871402a504a8fda42\n"
-        assert_includes stderr.string, "f30156d (2020-01-14) second commit\n"
-        assert_includes stderr.string, "https://github.com/3v0k4/foo/commit/f30156dd455d1f3f0b2b3e13de77ba5255096d61\n\n"
+        assert_includes Degem.stderr.string, "afb7796 (2020-01-12) initial commit\n"
+        assert_includes Degem.stderr.string, "https://github.com/3v0k4/foo/commit/afb779653f324eb1c6b486c871402a504a8fda42\n"
+        assert_includes Degem.stderr.string, "f30156d (2020-01-14) second commit\n"
+        assert_includes Degem.stderr.string, "https://github.com/3v0k4/foo/commit/f30156dd455d1f3f0b2b3e13de77ba5255096d61\n\n"
 
-        assert_includes stderr.string, "bar\n"
-        assert_includes stderr.string, "===\n\n\n"
+        assert_includes Degem.stderr.string, "bar\n"
+        assert_includes Degem.stderr.string, "===\n\n\n"
       end
     end
   end
