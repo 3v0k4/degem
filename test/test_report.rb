@@ -59,7 +59,7 @@ class TestReport < Minitest::Test
         stderr = StringIO.new
         Degem::Report.new(stderr).call(decorated)
 
-        assert_includes stderr.string, "The following gems may be unused:\n\n"
+        assert_includes stderr.string, "The following gems may be unused (2):\n\n"
 
         assert_includes stderr.string, "foo: https://github.com/3v0k4/foo\n"
         assert_includes stderr.string, "=================================\n\n"

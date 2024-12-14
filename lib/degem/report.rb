@@ -9,7 +9,7 @@ module Degem
     def call(rubygems)
       @stderr.puts
       @stderr.puts
-      @stderr.puts "The following gems may be unused:"
+      @stderr.puts "The following gems may be unused (#{rubygems.size}):"
       @stderr.puts
 
       rubygems.each do |rubygem|
