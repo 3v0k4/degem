@@ -35,8 +35,8 @@ def with_gemfile(&)
   with_file(path: File.join("app", "Gemfile"), content: content, &)
 end
 
-def bundle_install(rubygems, gemspec_paths = [], &block)
-  return yield(gemspec_paths) if rubygems == []
+def bundle_install(rubygems, gem_paths = [], gemspec_paths = [], &block)
+  return yield(gemspec_paths, gem_paths) if rubygems == []
 
   gem_name, source_code =
     if rubygems[0].instance_of?(Hash)
@@ -45,21 +45,21 @@ def bundle_install(rubygems, gemspec_paths = [], &block)
       [rubygems[0], ""]
     end
 
-  with_gem(name: gem_name, source_code: source_code) do |_gem_path, gemspec_path|
+  with_gem(name: gem_name, source_code: source_code) do |gem_path, gemspec_path|
     File.write(File.join(TEST_DIR, "app", "Gemfile"), "\ngem '#{gem_name}'", mode: "a")
-    bundle_install(rubygems[1..], gemspec_paths + [gemspec_path], &block)
+    bundle_install(rubygems[1..], gem_paths + [gem_path], gemspec_paths + [gemspec_path], &block)
   end
 end
 
 def with_gem(name:, source_code: "")
   gemspec = <<~CONTENT
-      Gem::Specification.new do |spec|
-        spec.name    = "#{name}"
-        spec.version = "1.0.0"
-        spec.summary = "Gemspec summary"
-        spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
-        spec.authors = ["Riccardo Odone"]
-      end
+    Gem::Specification.new do |spec|
+      spec.name    = "#{name}"
+      spec.version = "1.0.0"
+      spec.summary = "Gemspec summary"
+      spec.files   = Dir.glob("lib/**/*") + Dir.glob("exe/*")
+      spec.authors = ["Riccardo Odone"]
+    end
   CONTENT
 
   with_gemspec(gem_name: name, content: gemspec) do |gemspec_path|
