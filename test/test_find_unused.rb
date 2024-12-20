@@ -49,6 +49,18 @@ class TestFindUnused < Minitest::Test
     end
   end
 
+  def test_it_detects_unused_gems_based_on_the_class
+    with_gemfile do |gemfile_path|
+      bundle_install(["countries" => "module ISO3166; class Country; end; end"]) do |gemspec_paths|
+        with_file(path: File.join("app", "services", "foo.rb"), content: "ISO3166::Country.bar") do |f|
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [f] }).call
+          assert_empty actual
+        end
+      end
+    end
+  end
+
   def test_it_detects_unused_gems_based_on_the_top_call
     with_gemfile do |gemfile_path|
       bundle_install(["foo" => "class Foo; def call; end; end"]) do |gemspec_paths|

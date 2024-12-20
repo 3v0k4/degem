@@ -29,7 +29,9 @@ module Degem
         *name.split("-").each_cons(2).to_a.map(&:join)
       ]
 
-      parsed.consts.filter { |const| variations.any? { |variation| const.downcase.start_with?(variation.downcase) } }
+      parsed.classes + (parsed.modules + parsed.paths).filter do |const|
+        variations.any? { |variation| const.downcase == variation.downcase }
+      end
     end
 
     private
