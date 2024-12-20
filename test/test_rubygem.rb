@@ -9,7 +9,7 @@ class TestRubygem < Minitest::Test
         rubygem = Bundler::Dependency.new("foo", nil)
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
-        assert_array ["Foo"], actual.own_consts
+        assert_array ["Foo", "Foo::Bar"], actual.own_consts
       end
     end
   end
