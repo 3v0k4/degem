@@ -150,4 +150,19 @@ class TestRubygem < Minitest::Test
       end
     end
   end
+
+  def test_it_ignores_files_outside_of_lib
+    with_gemfile do
+      bundle_install(["foo" => "class Bar; end"]) do |gemspec_paths, gem_paths|
+        test_dir = File.join(gem_paths, "test")
+        FileUtils.mkdir_p(test_dir)
+        File.write(File.join(test_dir, "foo.rb"), "class Foo; end")
+        rubygem = Bundler::Dependency.new("foo", nil)
+        gem_specification = TestableGemSpecification.new(gemspec_paths)
+        actual = Degem::Rubygem.new(rubygem:, gem_specification:)
+        assert_array [], actual.own_consts
+        assert_array ["Bar"], actual.consts
+      end
+    end
+  end
 end

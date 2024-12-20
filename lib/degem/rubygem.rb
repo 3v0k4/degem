@@ -42,7 +42,7 @@ module Degem
       @parsed ||=
         begin
           gem_path = @gem_specification.find_by_name(name).full_gem_path
-          paths = Dir.glob(File.join(gem_path, "**/*.rb"))
+          paths = Dir.glob(File.join(gem_path, "**", "lib", "**/*.rb"))
           ParseRuby.new.call(paths)
         end
     end
