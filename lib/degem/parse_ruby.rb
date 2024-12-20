@@ -52,7 +52,7 @@ module Degem
     end
 
     def visit_constant_path_node(node)
-      consts_from(node).each { @consts.add(_1) }
+      paths_from(node).each { @consts.add(_1) }
       super
     end
 
@@ -83,7 +83,7 @@ module Degem
       acc
     end
 
-    def consts_from(node)
+    def paths_from(node)
       from_ancestor_to(node)
         .filter_map { _1.respond_to?(:name) ? _1.name.to_s : nil }
         .tap { _1.singleton_class.include(Scan) }

@@ -219,11 +219,4 @@ class TestParseRuby < Minitest::Test
       assert_array %w[Module SuperKlass Module::Klass Rack Rack::Utm], actual.consts
     end
   end
-
-  class ErroringVisitor < Degem::Visitor
-    def visit_module_node(_node)
-      integer_node = Prism.parse("1").value.statements.body.first
-      super(integer_node)
-    end
-  end
 end
