@@ -130,4 +130,24 @@ class TestRubygem < Minitest::Test
       end
     end
   end
+
+  def test_it_detects_a_railtie
+    %w[::Rails::Railtie Rails::Railtie ::Rails::Engine Rails::Engine].each do |klass|
+      railtie = <<~CONTENT
+        module Foo
+          class Railtie < #{klass}
+          end
+        end
+      CONTENT
+
+      with_gemfile do
+        bundle_install(["foo" => railtie]) do |gemspec_paths|
+          rubygem = Bundler::Dependency.new("foo", nil)
+          gem_specification = TestableGemSpecification.new(gemspec_paths)
+          actual = Degem::Rubygem.new(rubygem:, gem_specification:)
+          assert_predicate actual, :railtie?
+        end
+      end
+    end
+  end
 end

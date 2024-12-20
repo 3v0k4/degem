@@ -13,6 +13,10 @@ module Degem
       name == "rails"
     end
 
+    def railtie?
+      parsed.consts.grep(/Rails::Railtie|Rails::Engine/).any?
+    end
+
     def consts
       parsed.consts
     end
