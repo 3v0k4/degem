@@ -20,8 +20,7 @@ module Degem
     attr_reader :gemfile_path
 
     def reject_railties(rubygems)
-      rubygems
-        .reject { _1.name == "rails" }
+      rubygems.reject(&:rails?)
         .reject { _1.consts.grep(/Rails::Railtie|Rails::Engine/).any? }
     end
 

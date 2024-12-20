@@ -9,6 +9,10 @@ module Degem
       super(rubygem)
     end
 
+    def rails?
+      name == "rails"
+    end
+
     def consts
       parsed.consts
     end
