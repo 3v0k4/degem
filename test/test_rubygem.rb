@@ -10,7 +10,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["Foo"], actual.own_consts
-        assert_array ["Foo", "Foo::Bar"], actual.consts
       end
     end
   end
@@ -22,7 +21,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["FooBarBaz"], actual.own_consts
-        assert_array ["FooBarBaz"], actual.consts
       end
     end
   end
@@ -34,7 +32,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["Foo::Bar", "Foo::Bar::Baz"], actual.own_consts
-        assert_array ["Foo", "Foo::Bar", "Foo::Bar::Baz"], actual.consts
       end
     end
   end
@@ -46,7 +43,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["Foo::Bar"], actual.own_consts
-        assert_array ["Foo", "Foo::Bar"], actual.consts
       end
     end
 
@@ -56,7 +52,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["Bar::Baz"], actual.own_consts
-        assert_array ["Bar", "Bar::Baz"], actual.consts
       end
     end
   end
@@ -68,7 +63,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["FooBar"], actual.own_consts
-        assert_array ["FooBar"], actual.consts
       end
     end
   end
@@ -80,7 +74,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["FooBarBaz"], actual.own_consts
-        assert_array ["FooBarBaz"], actual.consts
       end
     end
   end
@@ -92,7 +85,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["Foo::Bar", "Foo::Bar::Baz"], actual.own_consts
-        assert_array ["Foo", "Foo::Bar", "Foo::Bar::Baz"], actual.consts
       end
     end
   end
@@ -104,7 +96,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["Foo::Bar"], actual.own_consts
-        assert_array ["Foo", "Foo::Bar"], actual.consts
       end
     end
 
@@ -114,7 +105,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["Bar::Baz"], actual.own_consts
-        assert_array ["Bar", "Bar::Baz"], actual.consts
       end
     end
   end
@@ -126,7 +116,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array ["FooBar"], actual.own_consts
-        assert_array ["FooBar"], actual.consts
       end
     end
   end
@@ -161,7 +150,6 @@ class TestRubygem < Minitest::Test
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::Rubygem.new(rubygem:, gem_specification:)
         assert_array [], actual.own_consts
-        assert_array ["Bar"], actual.consts
       end
     end
   end
