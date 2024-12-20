@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    degem (0.2.0)
+    degem (0.3.0)
       prism (~> 1.2)
 
 GEM
