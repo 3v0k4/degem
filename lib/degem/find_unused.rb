@@ -11,7 +11,7 @@ module Degem
 
     def call
       rubygems = gemfile.rubygems.reject { _1.name == "degem" }
-      rubygems = reject_railties(rubygems) if rails?
+      rubygems = reject_railties(rubygems) if gemfile.rails?
       reject_used(rubygems)
     end
 
@@ -52,10 +52,6 @@ module Degem
 
     def gemfile
       @gemfile ||= ParseGemfile.new(@gem_specification).call(gemfile_path)
-    end
-
-    def rails?
-      @rails ||= gemfile.rails?
     end
   end
 end
