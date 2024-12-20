@@ -120,7 +120,7 @@ class TestFindUnused < Minitest::Test
       bundle_install(%w[rails]) do |gemspec_paths|
         gem_specification = TestableGemSpecification.new(gemspec_paths)
         actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [] }).call
-        assert_empty actual.map(&:name)
+        assert_empty actual
       end
     end
   end
@@ -138,7 +138,7 @@ class TestFindUnused < Minitest::Test
         bundle_install(["rails", { "foo" => railtie }]) do |gemspec_paths|
           gem_specification = TestableGemSpecification.new(gemspec_paths)
           actual = Degem::FindUnused.new(gemfile_path:, gem_specification:, bundle_paths: ->(_) { [] }).call
-          assert_empty actual.map(&:name)
+          assert_empty actual
         end
       end
     end
