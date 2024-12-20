@@ -24,6 +24,9 @@ class TestParseRuby < Minitest::Test
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
       assert_array %w[foo bar baz], actual.requires
+      assert_array %w[Bundler File], actual.consts
+      assert_empty actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -37,7 +40,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Klass Klass::KK], actual.consts
+      assert_array %w[Klass Klass::KK], actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -51,7 +57,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[M M::K], actual.consts
+      assert_array %w[M::K], actual.classes
+      assert_array %w[M], actual.modules
     end
   end
 
@@ -70,7 +79,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[M1 M1::K1 M1::M2 M1::M2::K2], actual.consts
+      assert_array %w[M1::K1 M1::M2::K2], actual.classes
+      assert_array %w[M1 M1::M2], actual.modules
     end
   end
 
@@ -81,7 +93,10 @@ class TestParseRuby < Minitest::Test
     with_file(content: content1) do |path1|
       with_file(content: content2) do |path2|
         actual = Degem::ParseRuby.new.call([path1, path2])
+        assert_empty actual.requires
         assert_array %w[Klass M], actual.consts
+        assert_array %w[Klass], actual.classes
+        assert_array %w[M], actual.modules
       end
     end
   end
@@ -91,6 +106,8 @@ class TestParseRuby < Minitest::Test
       actual = Degem::ParseRuby.new.call(path)
       assert_empty actual.requires
       assert_empty actual.consts
+      assert_empty actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -102,7 +119,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Klass SuperKlass], actual.consts
+      assert_array %w[Klass], actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -114,7 +134,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Klass Module::SuperKlass Module], actual.consts
+      assert_array %w[Klass], actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -126,7 +149,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Klass Module::Nested::SuperKlass Module::Nested Module], actual.consts
+      assert_array %w[Klass], actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -138,6 +164,9 @@ class TestParseRuby < Minitest::Test
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
       assert_empty actual.requires
+      assert_empty actual.consts
+      assert_empty actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -148,7 +177,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Module1 Module1::Module2 Module1::Module2::Module3], actual.consts
+      assert_empty actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -161,7 +193,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Klass Module1 Module1::Module2 Module1::Module2::Module3], actual.consts
+      assert_array %w[Klass], actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -175,7 +210,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Foo], actual.consts
+      assert_array %w[Foo], actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -186,7 +224,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Foo], actual.consts
+      assert_empty actual.classes
+      assert_empty actual.modules
     end
   end
 
@@ -201,7 +242,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Module Module::Klass Rack Rack::Utm], actual.consts
+      assert_array %w[Module::Klass], actual.classes
+      assert_array %w[Module], actual.modules
     end
   end
 
@@ -216,7 +260,10 @@ class TestParseRuby < Minitest::Test
 
     with_file(content: content) do |path|
       actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
       assert_array %w[Module SuperKlass Module::Klass Rack Rack::Utm], actual.consts
+      assert_array %w[Module::Klass], actual.classes
+      assert_array %w[Module], actual.modules
     end
   end
 end

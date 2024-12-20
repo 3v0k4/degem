@@ -22,14 +22,19 @@ module Degem
   class Visitor < Prism::Visitor
     def initialize
       @requires = Set.new
-      @consts = Set.new
+      @paths = Set.new
+      @classes = Set.new
+      @modules = Set.new
       @path = nil
       @stack = []
       super
     end
 
     def requires = @requires.to_a
-    def consts = @consts.to_a
+    def consts = paths + classes + modules
+    def paths = @paths.to_a
+    def classes = @classes.to_a
+    def modules = @modules.to_a
     attr_writer :path
 
     def visit_call_node(node)
@@ -40,24 +45,24 @@ module Degem
     def visit_module_node(node)
       @stack.push(node)
       super
-      @consts.add(@stack.map(&:name).join("::"))
+      @modules.add(@stack.map(&:name).join("::"))
       @stack.pop
     end
 
     def visit_class_node(node)
       @stack.push(node)
       super
-      @consts.add(@stack.map(&:name).join("::"))
+      @classes.add(@stack.map(&:name).join("::"))
       @stack.pop
     end
 
     def visit_constant_path_node(node)
-      paths_from(node).each { @consts.add(_1) }
+      paths_from(node).each { @paths.add(_1) }
       super
     end
 
     def visit_constant_read_node(node)
-      @consts.add(node.name.to_s) unless @stack.find { _1.constant_path == node }
+      @paths.add(node.name.to_s) unless @stack.find { _1.constant_path == node }
       super
     end
 
