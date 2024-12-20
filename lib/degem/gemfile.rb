@@ -15,7 +15,7 @@ module Degem
     end
 
     def rails?
-      @rails ||= rubygems.map(&:name).include?("rails")
+      !!rubygems.find(&:rails?)
     end
 
     private
