@@ -266,4 +266,36 @@ class TestParseRuby < Minitest::Test
       assert_array %w[Module], actual.modules
     end
   end
+
+  def test_it_parses_module_colon_colon_class
+    content = <<~CONTENT
+      class PG::Result
+      end
+    CONTENT
+
+    with_file(content: content) do |path|
+      actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
+      assert_array %w[PG PG::Result], actual.consts
+      assert_array %w[PG::Result], actual.classes
+      assert_array %w[PG], actual.modules
+    end
+  end
+
+  def test_it_parses_module_module_colon_colon_class
+    content = <<~CONTENT
+      module Module1
+        class Module2::Klass
+        end
+      end
+    CONTENT
+
+    with_file(content: content) do |path|
+      actual = Degem::ParseRuby.new.call(path)
+      assert_empty actual.requires
+      assert_array %w[Module1 Module1::Module2 Module1::Module2::Klass Module2 Module2::Klass], actual.consts
+      assert_array %w[Module1::Module2::Klass], actual.classes
+      assert_array %w[Module1 Module1::Module2], actual.modules
+    end
+  end
 end

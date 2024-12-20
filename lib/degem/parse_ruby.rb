@@ -31,7 +31,7 @@ module Degem
     end
 
     def requires = @requires.to_a
-    def consts = paths + classes + modules
+    def consts = (@paths.union(@classes).union(@modules)).to_a
     def paths = @paths.to_a
     def classes = @classes.to_a
     def modules = @modules.to_a
@@ -52,8 +52,10 @@ module Degem
     def visit_class_node(node)
       @stack.push(node)
       super
-      @classes.add(@stack.map(&:name).join("::"))
       @stack.pop
+      *modules, klass = node.constant_path.full_name_parts rescue [[], node.name]
+      @modules.add((@stack.map(&:name) + modules).join("::")) if modules.any?
+      @classes.add((@stack.map(&:name) + modules + [klass]).join("::"))
     end
 
     def visit_constant_path_node(node)
