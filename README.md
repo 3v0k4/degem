@@ -17,7 +17,7 @@ With the current heuristics, many false positives are reported. But we can [make
 ## Users
 
 <p>
-  <a href="https://rictionary.odone.io">
+  <a href="https://rictionary.odone.me">
     <img width="90" width="90" hspace="10" src=".github/images/rictionary.svg" />
   </a>
 
